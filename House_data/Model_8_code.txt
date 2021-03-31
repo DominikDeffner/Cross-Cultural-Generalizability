@@ -1,0 +1,81 @@
+################# LOAD PACKAGES
+library(rstan)
+library(rethinking)
+library(parallel)
+library(binom)
+
+################# LOAD DATA
+
+dataset_firststage <- read.csv("Model_8_adult_data.csv")	# Same data as for Model 7
+dataset_secondstage <- read.csv("Model_8_child_data.csv")	# Same data as for Model 7
+
+################# VARIABLES
+
+# T5_ad_choice_1yes	# Adult subjects' judgments about which norm prime was "most correct", 1=GENEROUS, 0=SELFISH
+# T1_choice_1yes	# Child subjects' choices in the Dictator Game, 1=1/1, 0=2/0
+# fieldid		# Numerical code for fieldsite
+
+################# BUILD DATA LIST TO PASS TO STAN
+
+# build data list to pass to Stan
+data_list <- list(
+    N_1 = nrow(dataset_firststage) ,
+    DV_1 = as.integer(dataset_firststage$T5_ad_choice_1yes) ,
+    fieldid_1 = dataset_firststage$fieldid ,
+    N_2 = nrow(dataset_secondstage) ,
+    DV_2 = as.integer(dataset_secondstage$T1_choice_1yes) ,
+    fieldid_2 = dataset_secondstage$fieldid,
+    age = dataset_secondstage$age_c
+)
+
+################# DEFINE MODEL CODE
+model_code <- '
+data{
+    // FIRST STAGE DATA; ADULT DATA
+    int N_1;
+    int DV_1[N_1];	//# adults binary choices
+    int fieldid_1[N_1];	        //# id for society, adults
+
+    // SECOND STAGE DATA; CHILD DATA
+    int N_2;
+    int DV_2[N_2];	      //# childrens binary choices
+    int fieldid_2[N_2];	              //# id for society, children
+    real age[N_2];	                //# childrens ages (centered)
+}
+
+parameters{
+    // FOR ADULT MODEL
+    vector[6] first_stage_estimated_prob_of_adult_judgments ;	          //# the estimate of adults judgments for each society
+
+    // FOR CHILD MODEL
+    vector[4] alpha;
+}
+
+model{
+    // temporary variables to help construct models
+    vector[N_1] p;
+    vector[N_2] p2;
+    
+    // Priors
+    first_stage_estimated_prob_of_adult_judgments ~ normal(0, 2);
+    alpha ~ normal(0, 2);
+    
+    // FIRST STAGE MODEL; ADULT MODEL
+    for (i in 1:N_1){
+     p[i] = first_stage_estimated_prob_of_adult_judgments[fieldid_1[i]];
+     }
+    DV_1 ~ bernoulli_logit(p);
+
+    // SECOND STAGE MODEL; CHILD MODEL
+    for ( i in 1:N_2){
+     p2[i] = alpha[1] + alpha[2] * age[i] + alpha[3] * first_stage_estimated_prob_of_adult_judgments[fieldid_2[i]] + alpha[4] * age[i] * first_stage_estimated_prob_of_adult_judgments[fieldid_2[i]];  
+     }
+    DV_2 ~ bernoulli_logit(p2);
+}
+'
+
+Model_8 <- stan(model_code = model_code, data=data_list, chains=3, cores=3, warmup=1000, iter=5000)
+
+print(Model_8, digits=2)
+
+

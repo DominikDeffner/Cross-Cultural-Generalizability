@@ -1,0 +1,124 @@
+################# LOAD PACKAGES
+library(rstan)
+library(rethinking)
+library(parallel)
+library(binom)
+
+################# LOAD DATA
+
+dataset <- read.csv("Model_1a_1b_1c_data.csv")
+
+################# WAIC COMPARISON
+
+compare(Model_1a, Model_1b, Model_1c, n=40000)
+
+################# PARAMETERS
+
+# T1_ad_choice_1yes	# Adult subjects' choices in the Dictator Game, 1=1/1, 0=2/0
+# berlin		# Dummy parameter for Berlin sample
+# laplata		# Dummy parameter for La Plata sample
+# phoenix		# Dummy parameter for Phoenix sample
+# pune			# Dummy parameter for Pune sample
+# shuar			# Dummy parameter for Shuar sample
+# wiichi		# Dummy parameter for Wíchi sample
+# tanna			# Dummy parameter for Tanna sample
+# hadza			# Dummy parameter for Hadza sample
+# age_c			# Centered age parameter
+# GENDER_1female	# Parameter for subject gender, 1=Female, 0=Male
+
+################# MODELS
+
+Model_1a <- map(
+alist(
+    T1_ad_choice_1yes ~ dbinom( 1 , p ),
+    logit(p) <- Intercept ,
+    Intercept ~ dnorm(0,1)
+), data= dataset)
+precis(Model_1a, prob=0.95)
+
+
+Model_1b <- map(
+alist(
+    T1_ad_choice_1yes ~ dbinom( 1 , p ),
+    logit(p) <- Intercept +
+        b_berlin*berlin +
+        b_laplata*laplata +
+        b_phoenix*phoenix +
+        b_pune*pune +
+        b_shuar*shuar +
+        b_wiichi*wiichi +
+        b_tanna*tanna +
+        b_hadza*hadza ,
+    Intercept ~ dnorm(0,1),
+    b_berlin ~ dnorm(0,1),
+    b_laplata ~ dnorm(0,1),
+    b_phoenix ~ dnorm(0,1),
+    b_pune ~ dnorm(0,1),
+    b_shuar ~ dnorm(0,1),
+    b_wiichi ~ dnorm(0,1),
+    b_tanna ~ dnorm(0,1),
+    b_hadza ~ dnorm(0,1)
+), data= dataset)
+precis(Model_1b, prob=0.95)
+
+
+Model_1c <- map(
+alist(
+    T1_ad_choice_1yes ~ dbinom( 1 , p ),
+    logit(p) <- Intercept +
+        b_GENDER_1female*GENDER_1female +
+        b_age_c*age_c +
+        b_berlin*berlin +
+        b_laplata*laplata +
+        b_phoenix*phoenix +
+        b_pune*pune +
+        b_shuar*shuar +
+        b_wiichi*wiichi +
+        b_tanna*tanna +
+        b_hadza*hadza +
+        b_age_c_X_berlin*b_age_c*berlin +
+        b_age_c_X_laplata*b_age_c*laplata +
+        b_age_c_X_phoenix*b_age_c*phoenix +
+        b_age_c_X_pune*b_age_c*pune +
+        b_age_c_X_shuar*b_age_c*shuar +
+        b_age_c_X_wiichi*b_age_c*wiichi +
+        b_age_c_X_tanna*b_age_c*tanna +
+        b_age_c_X_hadza*b_age_c*hadza +
+        b_GENDER_1female_X_berlin*GENDER_1female*berlin +
+        b_GENDER_1female_X_laplata*GENDER_1female*laplata +
+        b_GENDER_1female_X_phoenix*GENDER_1female*phoenix +
+        b_GENDER_1female_X_pune*GENDER_1female*pune +
+        b_GENDER_1female_X_shuar*GENDER_1female*shuar +
+        b_GENDER_1female_X_wiichi*GENDER_1female*wiichi +
+        b_GENDER_1female_X_tanna*GENDER_1female*tanna +
+        b_GENDER_1female_X_hadza*GENDER_1female*hadza ,
+    Intercept ~ dnorm(0,1),
+    b_GENDER_1female ~ dnorm(0,1),
+    b_age_c ~ dnorm(0,1),
+    b_berlin ~ dnorm(0,1),
+    b_laplata ~ dnorm(0,1),
+    b_phoenix ~ dnorm(0,1),
+    b_pune ~ dnorm(0,1),
+    b_shuar ~ dnorm(0,1),
+    b_wiichi ~ dnorm(0,1),
+    b_tanna ~ dnorm(0,1),
+    b_hadza ~ dnorm(0,1),
+    b_age_c_X_berlin ~ dnorm(0,1),
+    b_age_c_X_laplata ~ dnorm(0,1),
+    b_age_c_X_phoenix ~ dnorm(0,1),
+    b_age_c_X_pune ~ dnorm(0,1),
+    b_age_c_X_shuar ~ dnorm(0,1),
+    b_age_c_X_wiichi ~ dnorm(0,1),
+    b_age_c_X_tanna ~ dnorm(0,1),
+    b_age_c_X_hadza ~ dnorm(0,1),
+    b_GENDER_1female_X_berlin ~ dnorm(0,1),
+    b_GENDER_1female_X_laplata ~ dnorm(0,1),
+    b_GENDER_1female_X_phoenix ~ dnorm(0,1),
+    b_GENDER_1female_X_pune ~ dnorm(0,1),
+    b_GENDER_1female_X_shuar ~ dnorm(0,1),
+    b_GENDER_1female_X_wiichi ~ dnorm(0,1),
+    b_GENDER_1female_X_tanna ~ dnorm(0,1),
+    b_GENDER_1female_X_hadza ~ dnorm(0,1)
+), data= dataset)
+precis(Model_1c, prob=0.95)
+

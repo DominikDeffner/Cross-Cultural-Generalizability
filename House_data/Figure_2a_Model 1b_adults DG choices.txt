@@ -1,0 +1,345 @@
+pdf(file="Figure_2.pdf",width=9,height=5)
+par(mfrow=c(1, 3), mar=c(9,6,4,1))
+
+
+################# LOAD PACKAGES
+library(rstan)
+library(rethinking)
+library(parallel)
+library(binom)
+
+################# LOAD DATA
+
+dataset <- read.csv("Model_1a_1b_1c_data.csv")
+
+#################
+
+predict.values <- "YES"
+
+################# SELECT MODEL
+
+model = Model_1b
+
+################# GENERAL PARAMETERS
+
+col0= 	rgb(0,0,0,255,max=255)
+shade0= rgb(0,0,0,70,max=255) 
+col1= 	rgb(255,0,0,255,max=255)
+shade1= rgb(255,0,0,70,max=255) 
+col2= 	rgb(0,0,255,255,max=255)
+shade2= rgb(0,0,255,70,max=255) 
+col3= 	rgb(0,153,0,255,max=255)
+shade3= rgb(0,153,0,70,max=255) 
+col4= 	rgb(204,102,0,255,max=255)
+shade4= rgb(204,102,0,70,max=255) 
+col5= 	rgb(127,0,255,255,max=255)
+shade5= rgb(127,0,255,70,max=255) 
+col6= 	rgb(153,150,76,255,max=255)
+shade6= rgb(153,150,76,70,max=255) 
+col7= 	rgb(216,5,202,255,max=255)
+shade7= rgb(75,0,153,70,max=255) 
+col8= 	rgb(100,100,100,255,max=255)
+shade8= rgb(100,100,100,70,max=255) 
+
+
+################# EXTRA PARAMETERS FOR MODEL 1c
+GENDER_1female=rep(mean(dataset$GENDER_1female),2)
+age.seq <- rep(0,2)
+age_c=age.seq
+################# EXTRA PARAMETERS FOR MODEL 1c
+
+
+################# ESTIMATES FOR BERLIN
+berlin <- rep(1, 2)
+laplata <- rep(0, 2)
+phoenix <- rep(0, 2)
+pune <- rep(0, 2)
+shuar <- rep(0, 2)
+wiichi <- rep(0, 2)
+tanna <- rep(0, 2)
+hadza <- rep(0, 2)
+d.pred <- list( 
+	age_c = age_c,
+	GENDER_1female = GENDER_1female,
+	berlin=berlin,
+	laplata=laplata,
+	phoenix=phoenix,
+	pune=pune,
+	shuar=shuar,
+	wiichi=wiichi,
+	tanna=tanna,
+	hadza=hadza)
+if(predict.values=="YES"){
+link <- link(model , n=10000 , data=d.pred)
+pred1a <- apply(link , 2 , mean)
+pred.PI1a <- apply( link , 2 , PI)}
+
+
+################# ESTIMATES FOR LA PLATA
+berlin <- rep(0, 2)
+laplata <- rep(1, 2)
+phoenix <- rep(0, 2)
+pune <- rep(0, 2)
+shuar <- rep(0, 2)
+wiichi <- rep(0, 2)
+tanna <- rep(0, 2)
+hadza <- rep(0, 2)
+d.pred <- list( 
+	age_c = age_c,
+	GENDER_1female = GENDER_1female,
+	berlin=berlin,
+	laplata=laplata,
+	phoenix=phoenix,
+	pune=pune,
+	shuar=shuar,
+	wiichi=wiichi,
+	tanna=tanna,
+	hadza=hadza)
+if(predict.values=="YES"){
+link <- link(model , n=10000 , data=d.pred)
+pred2a <- apply(link , 2 , mean)
+pred.PI2a <- apply( link , 2 , PI)}
+
+
+################# ESTIMATES FOR PHOENIX
+berlin <- rep(0, 2)
+laplata <- rep(0, 2)
+phoenix <- rep(1, 2)
+pune <- rep(0, 2)
+shuar <- rep(0, 2)
+wiichi <- rep(0, 2)
+tanna <- rep(0, 2)
+hadza <- rep(0, 2)
+d.pred <- list( 
+	age_c = age_c,
+	GENDER_1female = GENDER_1female,
+	berlin=berlin,
+	laplata=laplata,
+	phoenix=phoenix,
+	pune=pune,
+	shuar=shuar,
+	wiichi=wiichi,
+	tanna=tanna,
+	hadza=hadza)
+if(predict.values=="YES"){
+link <- link(model , n=10000 , data=d.pred)
+pred3a <- apply(link , 2 , mean)
+pred.PI3a <- apply( link , 2 , PI)}
+
+
+################# ESTIMATES FOR PUNE
+berlin <- rep(0, 2)
+laplata <- rep(0, 2)
+phoenix <- rep(0, 2)
+pune <- rep(1, 2)
+shuar <- rep(0, 2)
+wiichi <- rep(0, 2)
+tanna <- rep(0, 2)
+hadza <- rep(0, 2)
+d.pred <- list( 
+	age_c = age_c,
+	GENDER_1female = GENDER_1female,
+	berlin=berlin,
+	laplata=laplata,
+	phoenix=phoenix,
+	pune=pune,
+	shuar=shuar,
+	wiichi=wiichi,
+	tanna=tanna,
+	hadza=hadza)
+if(predict.values=="YES"){
+link <- link(model , n=10000 , data=d.pred)
+pred4a <- apply(link , 2 , mean)
+pred.PI4a <- apply( link , 2 , PI)}
+
+
+################# ESTIMATES FOR SHUAR
+berlin <- rep(0, 2)
+laplata <- rep(0, 2)
+phoenix <- rep(0, 2)
+pune <- rep(0, 2)
+shuar <- rep(1, 2)
+wiichi <- rep(0, 2)
+tanna <- rep(0, 2)
+hadza <- rep(0, 2)
+d.pred <- list( 
+	age_c = age_c,
+	GENDER_1female = GENDER_1female,
+	berlin=berlin,
+	laplata=laplata,
+	phoenix=phoenix,
+	pune=pune,
+	shuar=shuar,
+	wiichi=wiichi,
+	tanna=tanna,
+	hadza=hadza)
+if(predict.values=="YES"){
+link <- link(model , n=10000 , data=d.pred)
+pred5a <- apply(link , 2 , mean)
+pred.PI5a <- apply( link , 2 , PI)}
+
+
+################# ESTIMATES FOR WÍCHI
+berlin <- rep(0, 2)
+laplata <- rep(0, 2)
+phoenix <- rep(0, 2)
+pune <- rep(0, 2)
+shuar <- rep(0, 2)
+wiichi <- rep(1, 2)
+tanna <- rep(0, 2)
+hadza <- rep(0, 2)
+d.pred <- list( 
+	age_c = age_c,
+	GENDER_1female = GENDER_1female,
+	berlin=berlin,
+	laplata=laplata,
+	phoenix=phoenix,
+	pune=pune,
+	shuar=shuar,
+	wiichi=wiichi,
+	tanna=tanna,
+	hadza=hadza)
+if(predict.values=="YES"){
+link <- link(model , n=10000 , data=d.pred)
+pred6a <- apply(link , 2 , mean)
+pred.PI6a <- apply( link , 2 , PI)}
+
+
+################# ESTIMATES FOR TANNA
+berlin <- rep(0, 2)
+laplata <- rep(0, 2)
+phoenix <- rep(0, 2)
+pune <- rep(0, 2)
+shuar <- rep(0, 2)
+wiichi <- rep(0, 2)
+tanna <- rep(1, 2)
+hadza <- rep(0, 2)
+d.pred <- list( 
+	age_c = age_c,
+	GENDER_1female = GENDER_1female,
+	berlin=berlin,
+	laplata=laplata,
+	phoenix=phoenix,
+	pune=pune,
+	shuar=shuar,
+	wiichi=wiichi,
+	tanna=tanna,
+	hadza=hadza)
+if(predict.values=="YES"){
+link <- link(model , n=10000 , data=d.pred)
+pred7a <- apply(link , 2 , mean)
+pred.PI7a <- apply( link , 2 , PI)}
+
+
+################# ESTIMATES FOR HADZA
+berlin <- rep(0, 2)
+laplata <- rep(0, 2)
+phoenix <- rep(0, 2)
+pune <- rep(0, 2)
+shuar <- rep(0, 2)
+wiichi <- rep(0, 2)
+tanna <- rep(0, 2)
+hadza <- rep(1, 2)
+d.pred <- list( 
+	age_c = age_c,
+	GENDER_1female = GENDER_1female,
+	berlin=berlin,
+	laplata=laplata,
+	phoenix=phoenix,
+	pune=pune,
+	shuar=shuar,
+	wiichi=wiichi,
+	tanna=tanna,
+	hadza=hadza)
+if(predict.values=="YES"){
+link <- link(model , n=10000 , data=d.pred)
+pred8a <- apply(link , 2 , mean)
+pred.PI8a <- apply( link , 2 , PI)}
+
+
+
+################# PLOTTING MODEL ESTIMATES
+
+cexset = 1.3
+
+plot( dataset$age_c , type="n" , xlab="", ylab="Prob. of a 1/1 (prosocial) Choice" , axes=FALSE, ylim=c(0,1) , xlim=c(min(.5),max(8.5)), cex.lab=cexset)
+title(main="(2a) Model 1b Results:\nAdults' DG choices\nvary across societies", cex.main=cexset, sub="", cex.sub=cexset)
+lablist <- as.vector(c("Berlin, DEU","La Plata, ARG","Phoenix, USA","Pune, IND","Shuar, ECU","Wíchi, ARG","Tanna, VUT","Hadza, TZA"))
+axis(1, at=seq(1,8,by=(1)), lab=FALSE)
+text(seq(1,8,by=(1))-0.25, y=-0.08, par("usr")[3] - 0.0, labels = lablist, srt = 90, pos = NULL, xpd = TRUE, cex.axis=cexset, las=2, adj = c(1,1), col=c(col1,col2,col3,col4,col5,col6,col7,col8), cex=cexset)
+axis(2, at=seq(0,1,by=(.5)), lab=seq(0,1,by=(.5)), cex.axis=cexset)    
+abline(a=.5, b=0)
+
+y=.3
+x=0
+
+x=x+1
+lines( c(x-y,x+y) , pred1a, lwd=2, lty=1 , col=col1)
+shade( pred.PI1a , c(x-y,x+y)  , col=shade1 )
+
+x=x+1
+lines( c(x-y,x+y) , pred2a, lwd=2, lty=1 , col=col2)
+shade( pred.PI2a , c(x-y,x+y)  , col=shade2 )
+
+x=x+1
+lines( c(x-y,x+y) , pred3a, lwd=2, lty=1 , col=col3)
+shade( pred.PI3a , c(x-y,x+y)  , col=shade3 )
+
+x=x+1
+lines( c(x-y,x+y) , pred4a, lwd=2, lty=1 , col=col4)
+shade( pred.PI4a , c(x-y,x+y)  , col=shade4 )
+
+x=x+1
+lines( c(x-y,x+y) , pred5a, lwd=2, lty=1 , col=col5)
+shade( pred.PI5a , c(x-y,x+y)  , col=shade5 )
+
+x=x+1
+lines( c(x-y,x+y) , pred6a, lwd=2, lty=1 , col=col6)
+shade( pred.PI6a , c(x-y,x+y)  , col=shade6 )
+
+x=x+1
+lines( c(x-y,x+y) , pred7a, lwd=2, lty=1 , col=col7)
+shade( pred.PI7a , c(x-y,x+y)  , col=shade7 )
+
+x=x+1
+lines( c(x-y,x+y) , pred8a, lwd=2, lty=1 , col=col8)
+shade( pred.PI8a , c(x-y,x+y)  , col=shade8 )
+
+
+
+################# PLOTTING MEANS
+
+means <- matrix(nrow = 11, ncol = 4)
+for (i in 1:11){
+x <- (binom.confint(sum(dataset[dataset$fieldid==i,]$T1_ad_choice_1yes), length(dataset[dataset$fieldid==i,]$T1_ad_choice_1yes),conf.level = 0.95,methods="exact"))
+means[i,1] <- x[["mean"]]
+means[i,2] <- x[["lower"]]
+means[i,3] <- x[["upper"]]
+means[i,4] <- (i)
+}
+
+########## ADDING MEANS For Henrich et al. 2006
+means[9,] <- c(.45,.45,.45,3)
+means[10,] <- c(.34,.34,.34,5)
+means[11,] <- c(.26,.26,.26,8)
+########## ADDING MEANS For Henrich et al. 2006
+
+
+dt1 = 19
+dt2 = 6
+
+points(pch=c(dt1,dt1,dt1,dt1,dt1,dt1,dt1,dt1,dt2,dt2,dt2), col=c(col1,col2,col3,col4,col5,col6,col7,col8,col3,col5,col8), lwd=1, cex=1.5,x=means[,4],y=means[,1])
+
+segments(means[1,4], means[1,2], means[1,4], means[1,3], col = col1 )
+segments(means[2,4], means[2,2], means[2,4], means[2,3], col = col2 )
+segments(means[3,4], means[3,2], means[3,4], means[3,3], col = col3 )
+segments(means[4,4], means[4,2], means[4,4], means[4,3], col = col4 )
+segments(means[5,4], means[5,2], means[5,4], means[5,3], col = col5 )
+segments(means[6,4], means[6,2], means[6,4], means[6,3], col = col6 )
+segments(means[7,4], means[7,2], means[7,4], means[7,3], col = col7 )
+segments(means[8,4], means[8,2], means[8,4], means[8,3], col = col8 )
+
+
+
+
+

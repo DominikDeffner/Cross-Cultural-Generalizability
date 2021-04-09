@@ -1,29 +1,23 @@
-# Try to do simple MRP
-# If we want to compare distribution of trait, we need to account for demographic makeup
+# Try to do simple MRP with simulated data
 
-setwd("~/GitHub/Cross_Cultural_Generalizability")
 
-data <- read.csv("House_data/Model_1a_1b_1c_data.csv")
+library(rethinking)
 
-data <- subset(data, data$fieldid == 1)
+N <- 100
+age = sort(runif(N, 10,90))
+gender = sample(c(1,2), N, replace = TRUE) # 2 female now
 
-P <- matrix(10, nrow = 4, ncol = 2)
-P[,1] <- 10
-P[,2] <- 100
+y = rbinom(N, 1, inv_logit(3*(gender-1) + 1*standardize(age)))
 
-P[2,2] <- 0
-
-# plot
-
-d <- list(y = data$T1_ad_choice_1yes,
-          ind_id = sapply(1:nrow(data), function (i) which(unique(data$SUBJECT_ID) == data$SUBJECT_ID[i])),
-          soc_id = data$fieldid,
-          age = data$AGE_in_years,
-          gender = as.integer(data$GENDER_1female +1), # 2 female now
-          N = nrow(data),
-          P = P
+d <- list(age = age,
+          gender = gender, # 2 female now
+          N = N,
+          y=y
 )
 
+
+
+# Categorize ppl in 4 age classes
 
 d$age <- sapply(1:length(d$age), function (i){
   if (d$age[i] <= 30) return(1)
@@ -33,18 +27,28 @@ d$age <- sapply(1:length(d$age), function (i){
 
 
 
-library(rethinking)
+# Here we construct a data matrix for number of individuals in demographic classes in target population
+
+P <- matrix(10, nrow = 4, ncol = 2)
+P[,1] <- 100
+P[,2] <- 1000
+
+P[4,] <- 3000
+
+d$P <- P
+
+
+
 
 
 ### Mister P stan model with gender and discrete age categories
 {
-MRP_stan <- "
+  MRP_stan <- "
 
 data {
   int N;
   int age[N];
   int gender[N];
-  int soc_id[N];
   int y[N];
   int<lower = 0> P[4,2];   // Here we enter data matrix with demographic constitution of target population
 }
@@ -83,10 +87,43 @@ generated quantities {
 }
 
 
+m <- stan( model_code  = MRP_stan , data=d ,iter = 2000, cores = 1, chains=1, control = list(adapt_delta=0.8, max_treedepth = 10))  
+
+m_samp <- extract.samples(m)
 
 
 
-d$age <- data$AGE_in_years
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+d$age <- age
 d$AgeMat <- matrix(nrow = d$N, ncol = d$N)
 for (i in 1:d$N) {
   for (j in 1:d$N) {
@@ -131,7 +168,6 @@ data {
   int N;
   real age[N];
   int gender[N];
-  int soc_id[N];
   int y[N];
   int<lower = 0> P[4,2];   // Here we enter data matrix with demographic constitution of target population
   matrix[N,N] AgeMat;
@@ -154,7 +190,7 @@ model {
 
   alpha ~ normal(0, 2);
 
-  rhosq ~ exponential( 0.5 );
+  rhosq ~ exponential( 2 );
   etasq ~ exponential( 2 );
 
   SIGMA = cov_GPL2(AgeMat, etasq, rhosq, 0.01);
@@ -184,13 +220,12 @@ y ~ binomial(1, p);
 }
  
  "
- }
+}
 
 
 
 
 
-#m <- stan( model_code  = MRP_stan , data=d ,iter = 2000, cores = 1, chains=1, control = list(adapt_delta=0.8, max_treedepth = 10))  
 
 m_GP <- stan( model_code  = MRP_GP , data=d ,iter = 2000, cores = 1, chains=1, control = list(adapt_delta=0.8, max_treedepth = 10))  
 

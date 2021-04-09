@@ -1,5 +1,7 @@
-# Try to do simple MRP
+# Try to do simple MRP with real data
 # If we want to compare distribution of trait, we need to account for demographic makeup
+
+library(rethinking)
 
 setwd("~/GitHub/Cross_Cultural_Generalizability")
 
@@ -7,13 +9,14 @@ data <- read.csv("House_data/Model_1a_1b_1c_data.csv")
 
 data <- subset(data, data$fieldid == 1)
 
+# Here we construct a data matrix for number of individuals in demographic classes in target population
+
 P <- matrix(10, nrow = 4, ncol = 2)
 P[,1] <- 10
 P[,2] <- 100
 
 P[2,2] <- 0
 
-# plot
 
 d <- list(y = data$T1_ad_choice_1yes,
           ind_id = sapply(1:nrow(data), function (i) which(unique(data$SUBJECT_ID) == data$SUBJECT_ID[i])),
@@ -25,6 +28,8 @@ d <- list(y = data$T1_ad_choice_1yes,
 )
 
 
+# Categorize ppl in 4 age classes
+
 d$age <- sapply(1:length(d$age), function (i){
   if (d$age[i] <= 30) return(1)
   if (d$age[i] > 30 & d$age[i] <=40 ) return(2)
@@ -33,7 +38,6 @@ d$age <- sapply(1:length(d$age), function (i){
 
 
 
-library(rethinking)
 
 
 ### Mister P stan model with gender and discrete age categories
@@ -83,6 +87,9 @@ generated quantities {
 }
 
 
+m <- stan( model_code  = MRP_stan , data=d ,iter = 2000, cores = 1, chains=1, control = list(adapt_delta=0.8, max_treedepth = 10))  
+
+m_samp <- extract.samples(m)
 
 
 
@@ -190,7 +197,6 @@ y ~ binomial(1, p);
 
 
 
-#m <- stan( model_code  = MRP_stan , data=d ,iter = 2000, cores = 1, chains=1, control = list(adapt_delta=0.8, max_treedepth = 10))  
 
 m_GP <- stan( model_code  = MRP_GP , data=d ,iter = 2000, cores = 1, chains=1, control = list(adapt_delta=0.8, max_treedepth = 10))  
 

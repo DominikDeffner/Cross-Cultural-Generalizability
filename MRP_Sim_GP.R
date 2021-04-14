@@ -12,7 +12,7 @@ library(rethinking)
 
 
 #Simulate data
-N <- 500
+N <- 400
 MA <- 60    #Max Age
 age = round(runif(N, 1,MA))
 
@@ -39,7 +39,7 @@ d <- list(N = N2,
 
 
 #Here we specify age distribution in target population that we use for weighting
-d$P <- rep(0, d$MA)
+d$P <- rep(0, MA)
 d$P[40:60] <- 100
 
 
@@ -151,7 +151,7 @@ legend("topright", c("Observed", "Unobserved"), col = c("black", "blue"), lwd = 
 ###
 
 
-N <- 600
+N <- 100
 MA <- 60
 
 age = round(runif(N, 1,MA))

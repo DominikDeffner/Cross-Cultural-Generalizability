@@ -19,6 +19,8 @@ data_children$T1_choice_1yes <- NULL
 
 Society <- c("Berlin (GER)","La Plata (ARG)","Phoenix (USA)", "Pune (IND)", "Shuar (ECU)", "Wiichi (ARG)", "Tanna (WUT)", "Hadza (TZA)")
 
+
+
 graphics.off()
 png("Pyramids.png", width = 16,height = 26, units = "cm", res = 900)
 par(mfrow = c(4,2), 
@@ -66,3 +68,17 @@ if (j == 2) legend("topright", c("Male", "Female"), col = c("indianred", "darkgr
 mtext("Number of individuals per age and gender", side = 1,line = 2, outer = TRUE, cex = 1.3)
 mtext("Age class", side = 2, outer = TRUE, line = 2, cex = 1.3)
 dev.off()
+
+
+
+#Calculate demographic characteristics
+
+Demographics <- data.frame(ID = Society, Mean = NA, Median = NA, Upper = NA, Lower = NA, N = NA)
+for (j in 1:8) {
+  Demographics$Mean[j] <- mean(d$age[d$soc_id == j])
+  Demographics$Median[j] <- median(d$age[d$soc_id == j])
+  Demographics$Upper[j] <- max(d$age[d$soc_id == j])
+  Demographics$Lower[j] <- min(d$age[d$soc_id == j])
+  Demographics$N[j] <- length(d$age[d$soc_id == j])
+  
+}

@@ -110,7 +110,7 @@ mtext("Number of individuals per age class and gender", side = 1,line = 1.5,at =
 
 
 
-p_logit_culture <-c(-1, -1)
+p_logit_culture <-c(-1, 0)
 
 b_age <- 0.04
 b_gender <- 0
@@ -158,15 +158,12 @@ d2 <- list(N = N,
 
 d1$P_same <-a1
 d1$P_other <-  a2
-d1$P_other[1,] <- 100
-d1$P_other[2,] <- 100
+
 
 d2$P_same <- a2
 
 d2$P_other <-  a2
 
-d2$P_other[1,] <- 100
-d2$P_other[2,] <- 100
 
 
 
@@ -341,9 +338,14 @@ segments(x0 = 1:d2$MA, y0 = Lower, x1=  1:d2$MA, y1 = Higher, lwd = 2, col = ife
 }
 
 
+library(scales)
+#color stuff
+require(RColorBrewer)#load package
+col.pal <- brewer.pal(8, "Dark2") #create a pallette which you loop over for corresponding values
+seqoverall <- seq
 
 graphics.off()
-png("Demostand_nodiff.png", res = 600, height = 22, width = 18, units = "cm")
+png("Demostand2704.png", res = 600, height = 20, width = 16, units = "cm")
 
 
 par(mfrow = c(3,2), 
@@ -361,7 +363,7 @@ legend("topright", c("Male", "Female"), col = c("indianred", "darkgreen"),cex = 
 mtext("Population", side = 2, outer = F, line = 3.5, cex = 1.3)
 mtext("Age class", side = 2, outer = F, line = 0.2, cex = 1)
 par(mar=pyramid.plot(D[2,1, ]*100,D[2,2, ]*100,top.labels=c("", "Population II",""),ppmar=c(2,1,3,1), xlim = c(3,3),labelcex=1.2, unit = "",show.values=F, labels = labels2, lxcol = "indianred", rxcol = "darkgreen", space = 0,gap = 0))
-mtext("Share of population per age class and gender [%]", side = 1,line = 4,at = -5.5, outer = F, cex = 1)
+mtext("Share of population per age class and gender [%]", side = 1,line = 4,at = -4, outer = F, cex = 0.9)
 
 
 par(mar=pyramid.plot(a1[1,],a1[2,],top.labels=c("", "",""),ppmar=c(2,1,3,1), xlim = c(max(c(a1,a2)+3),max(c(a1,a2))+3),labelcex=1.2, unit = "",show.values=F, labels = labels1, lxcol = "indianred", rxcol = "darkgreen",space = 0,gap = 0))
@@ -369,7 +371,7 @@ mtext("Sample", side = 2, outer = F, line = 3.5, cex = 1.3)
 mtext("Age class", side = 2, outer = F, line = 0.2, cex = 1)
 par(mar=pyramid.plot(a2[1,],a2[2,],top.labels=c("", "",""),ppmar=c(2,1,3,1), xlim = c(max(c(a1,a2)+3),max(c(a1,a2))+3),labelcex=1.2, unit = "",show.values=F, labels = labels2, lxcol = "indianred", rxcol = "darkgreen",space = 0,gap = 0))
 
-mtext("Number of individuals per age class and gender", side = 1,line = 4,at = -18, outer = F, cex = 1)
+mtext("Number of individuals per age class and gender", side = 1,line = 4,at = -18, outer = F, cex = 0.9)
 
 
 
@@ -392,21 +394,21 @@ mtext("Density", side = 2,line = 3, outer = F, cex = 1)
 dens <- density(m12samp$phi)
 x1 <- min(which(dens$x >= quantile(m12samp$phi, 0)))  
 x2 <- max(which(dens$x <  quantile(m12samp$phi, 1)))
-plot(dens, xlim = c(0,1), ylim = c(0,30), type="n", ann = FALSE, bty = "n")
+plot(dens, xlim = c(0,1), ylim = c(0,30), type="n", ann = FALSE, bty = "n", yaxt = "n")
 with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[5],alpha = 0.9), border = NA))
 abline(v = phi[2], lty = 2, lwd = 2)
 
-par(new=TRUE)
-
-dens <- density(m12samp$psi)
-x1 <- min(which(dens$x >= quantile(m12samp$psi, 0)))
-x2 <- max(which(dens$x <  quantile(m12samp$psi, 1)))
-plot(dens, xlim = c(0,1), ylim = c(0,30), type="n", ann = FALSE, bty = "n")
-with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[5],alpha = 0.3), border = NA))
+# par(new=TRUE)
+# 
+# dens <- density(m12samp$psi)
+# x1 <- min(which(dens$x >= quantile(m12samp$psi, 0)))
+# x2 <- max(which(dens$x <  quantile(m12samp$psi, 1)))
+# plot(dens, xlim = c(0,1), ylim = c(0,30), type="n", ann = FALSE, bty = "n")
+# with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[5],alpha = 0.3), border = NA))
 
 mtext("Probability of choosing prosocial option", side = 1,line = 3,at=-0.1, outer = F, cex = 1)
 
-legend("topleft", title = "Population", c("I","I (adjusted)", "II", "II (adjusted)"), col = c(alpha(col.pal[4],alpha = 0.9),alpha(col.pal[4],alpha = 0.3),alpha(col.pal[5],alpha = 0.9),alpha(col.pal[5],alpha = 0.3)), lwd = 6, bty="n")
+legend("topleft", title = "Population", c("I","I (adjusted)", "II"), col = c(alpha(col.pal[4],alpha = 0.9),alpha(col.pal[4],alpha = 0.3),alpha(col.pal[5],alpha = 0.9)), lwd = 6, bty="n")
 
 dev.off()
 

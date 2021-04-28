@@ -406,9 +406,9 @@ abline(v = phi[2], lty = 2, lwd = 2)
 # plot(dens, xlim = c(0,1), ylim = c(0,30), type="n", ann = FALSE, bty = "n")
 # with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[5],alpha = 0.3), border = NA))
 
-mtext("Probability of choosing prosocial option", side = 1,line = 3,at=-0.1, outer = F, cex = 1)
+mtext("Probability of choosing prosocial option", side = 1,line = 2.9,at=-0.1, outer = F, cex = 0.9)
+legend("topleft", title = "Population", c("I","I (poststratified)", "II"), col = c(alpha(col.pal[4],alpha = 0.9),alpha(col.pal[4],alpha = 0.3),alpha(col.pal[5],alpha = 0.9)), lwd = 6, bty="n", cex = 1)
 
-legend("topleft", title = "Population", c("I","I (adjusted)", "II"), col = c(alpha(col.pal[4],alpha = 0.9),alpha(col.pal[4],alpha = 0.3),alpha(col.pal[5],alpha = 0.9)), lwd = 6, bty="n")
 
 dev.off()
 

@@ -24,19 +24,19 @@ Age_range <- c(1:90)
 
 
 #Create population array [pop, sex, age]
-D1 <- array(NA,c(2,2,length(Age_range)))
+D_popdiff <- array(NA,c(2,2,length(Age_range)))
 
 X <- 1:100
 
 age_seq <- seq(0, 100, 1)
 
 #Exponential distribution (similar to many growing populations)
-D1[1,1, ] <- dexp(age_seq, 0.04)[Age_range]
-D1[1,2, ] <- dexp(age_seq, 0.04)[Age_range]
+D_popdiff[1,1, ] <- dexp(age_seq, 0.04)[Age_range]
+D_popdiff[1,2, ] <- dexp(age_seq, 0.04)[Age_range]
 
 #Skewed normal distribution (similar to many shrinking populations)
-D1[2,1, ] <- dsn(X, xi = 30, omega = 50, alpha = 1)[Age_range]
-D1[2,2, ] <- dsn(X, xi = 30, omega = 50, alpha = 1)[Age_range]
+D_popdiff[2,1, ] <- dsn(X, xi = 30, omega = 50, alpha = 1)[Age_range]
+D_popdiff[2,2, ] <- dsn(X, xi = 30, omega = 50, alpha = 1)[Age_range]
 
 
 #Generate data
@@ -45,7 +45,7 @@ d <- data.frame(id = 1:(2*N), soc_id = c(rep(1,N), rep(2,N)), age = NA, gender =
 
 #Simulate ages from above distributions
 for (pop_id in 1:2) {
-  d$age[d$soc_id==pop_id] <- sample(Age_range, N, replace = TRUE, prob = D1[pop_id,1,])
+  d$age[d$soc_id==pop_id] <- sample(Age_range, N, replace = TRUE, prob = D_popdiff[pop_id,1,])
 }
 
 #Simulate Genders
@@ -53,25 +53,22 @@ for (pop_id in 1:2) {
 d$gender[d$soc_id==1] <- sample(c(1,2),N, replace = TRUE, prob = c(0.5, 0.5)) 
 d$gender[d$soc_id==2] <- sample(c(1,2),N, replace = TRUE, prob = c(0.5, 0.5)) 
 
+SampleD_popdiff <- array(NA,c(2,2,length(Age_range)))
 
-
-a11 <- matrix(0, 2, length(Age_range))
-for (i in Age_range) {
-     a11[1,which(Age_range == i)] <- length(which(d$age[d$soc_id == 1]==i & d$gender[d$soc_id == 1] == 1))
-     a11[2,which(Age_range == i)] <- length(which(d$age[d$soc_id == 1]==i & d$gender[d$soc_id == 1] == 2))
-}
-a12 <- matrix(0, 2, length(Age_range))
-for (i in Age_range) {
-  a12[1,which(Age_range == i)] <- length(which(d$age[d$soc_id == 2]==i & d$gender[d$soc_id == 2] == 1))
-  a12[2,which(Age_range == i)] <- length(which(d$age[d$soc_id == 2]==i & d$gender[d$soc_id == 2] == 2))
+for (pop_id in 1:2) {
+  for (gender in 1:2) {
+    for (i in Age_range) {
+    SampleD_popdiff[pop_id, gender, i] <- length(which(d$age[d$soc_id == pop_id]==i & d$gender[d$soc_id == pop_id] == gender))
+  }  
+ }
 }
 
 
+p_logit_culture <-c(-3, -1)
 
-p_logit_culture <-c(-1, 0)
-
-b_age <- 0.04
-b_gender <- 0
+#Effects of age and gender
+b_age <- 0.03
+b_gender <- 2
 
 #Generate observations
 stand_age<- c()
@@ -80,17 +77,17 @@ for (i in 1:(2*N)) stand_age[i] <- (d$age[i] - mean(d$age[d$soc_id==1]))/sd(d$ag
 for(i in 1:(2*N)) d$outcome[i] <- rbinom(1, 1, inv_logit(p_logit_culture[d$soc_id[i]] + b_age*d$age[i] + b_gender*(d$gender[i]-1)) )
 
 
-phi1 <- c()
+phi_popdiff <- c()
 for (pop in 1:2) {
   expect_pos = 0
   total = 0
   for (a in 1:2){
     for (b in 1:max(Age_range)){
-      total = total + D1[pop,a,b];
-      expect_pos = expect_pos + D1[pop,a,b] * inv_logit(p_logit_culture[pop] + b_gender*(a-1) + b_age*b);
+      total = total + D_popdiff[pop,a,b];
+      expect_pos = expect_pos + D_popdiff[pop,a,b] * inv_logit(p_logit_culture[pop] + b_gender*(a-1) + b_age*b);
     }
   }  
-  phi1[pop] = expect_pos / total
+  phi_popdiff[pop] = expect_pos / total
 }
 
 
@@ -99,14 +96,14 @@ for (pop in 1:2) {
 
 
 
-d1 <- list(N = N,
+d1_popdiff <- list(N = N,
            MA = max(Age_range),
            gender = d$gender[d$soc_id==1], 
            age = d$age[d$soc_id==1],
            outcome = d$outcome[d$soc_id==1]
 )
 
-d2 <- list(N = N,
+d2_popdiff <- list(N = N,
            MA = max(Age_range),
            gender = d$gender[d$soc_id==2], 
            age = d$age[d$soc_id==2],
@@ -114,13 +111,14 @@ d2 <- list(N = N,
 )
 
 
-d1$P_same <-a11
-d1$P_other <-  a12
 
 
-d2$P_same <- a12
+d1_popdiff$P_same  <- SampleD_popdiff[1,,]
+d1_popdiff$P_other <-  SampleD_popdiff[2,,]
 
-d2$P_other <-  a11
+
+d1_popdiff$P_same  <- SampleD_popdiff[2,,]
+d1_popdiff$P_other <-  SampleD_popdiff[1,,]
 
 
 
@@ -227,12 +225,12 @@ generated quantities{
 
 
 
-m11 <- stan( model_code  = m2a_MRP_GP_gender_same , data=d1 ,iter = 2000, cores = 1, seed=1, chains=1, control = list(adapt_delta=0.95, max_treedepth = 13))  
+m_popdiff1 <- stan( model_code  = m2a_MRP_GP_gender_same , data=d1_popdiff ,iter = 4000, cores = 1, seed=1, chains=1, control = list(adapt_delta=0.95, max_treedepth = 13))  
 
-m12 <- stan( model_code  = m2a_MRP_GP_gender_same , data=d2 ,iter = 2000, cores = 1, seed=1, chains=1, control = list(adapt_delta=0.95, max_treedepth = 13))  
+m_popdiff2 <- stan( model_code  = m2a_MRP_GP_gender_same , data=d1_popdiff ,iter = 4000, cores = 1, seed=1, chains=1, control = list(adapt_delta=0.95, max_treedepth = 13))  
 
-m11samp <- extract.samples(m11)
-m12samp <- extract.samples(m12)
+s_popdiff1 <- extract.samples(m_popdiff1)
+s_popdiff2 <- extract.samples(m_popdiff2)
 
 
 
@@ -248,19 +246,19 @@ m12samp <- extract.samples(m12)
 
 
 #Create population array [pop, sex, age]
-D2 <- array(NA,c(2,2,length(Age_range)))
+D_samplediff <- array(NA,c(2,2,length(Age_range)))
 
 X <- 1:100
 
 age_seq <- seq(0, 100, 1)
 
 #Exponential distribution (similar to many growing populations)
-D2[1,1, ] <- dexp(age_seq, 0.04)[Age_range]
-D2[1,2, ] <- dexp(age_seq, 0.04)[Age_range]
+D_samplediff[1,1, ] <- dexp(age_seq, 0.04)[Age_range]
+D_samplediff[1,2, ] <- dexp(age_seq, 0.04)[Age_range]
 
 #Skewed normal distribution (similar to many shrinking populations)
-D2[2,1, ] <- dexp(age_seq, 0.04)[Age_range]
-D2[2,2, ] <-dexp(age_seq, 0.04)[Age_range]
+D_samplediff[2,1, ] <- dexp(age_seq, 0.04)[Age_range]
+D_samplediff[2,2, ] <-dexp(age_seq, 0.04)[Age_range]
 
 
 
@@ -270,27 +268,24 @@ d <- data.frame(id = 1:(2*N), soc_id = c(rep(1,N), rep(2,N)), age = NA, gender =
 
 #Simulate ages from above distributions
 for (pop_id in 1:2) {
-  d$age[d$soc_id==pop_id] <- sample(Age_range, N, replace = TRUE, prob = D2[pop_id,1,])
+  d$age[d$soc_id==pop_id] <- sample(Age_range, N, replace = TRUE, prob = D_samplediff[pop_id,1,])
 }
 
 #Simulate Genders
 
-d$gender[d$soc_id==1] <- sample(c(1,2),N, replace = TRUE, prob = c(0.4, 0.6)) 
-d$gender[d$soc_id==2] <- sample(c(1,2),N, replace = TRUE, prob = c(0.7, 0.3)) 
+d$gender[d$soc_id==1] <- sample(c(1,2),N, replace = TRUE, prob = c(0.35, 0.65)) 
+d$gender[d$soc_id==2] <- sample(c(1,2),N, replace = TRUE, prob = c(0.75, 0.25)) 
 
 
+SampleD_samplediff <- array(NA,c(2,2,length(Age_range)))
 
-a21 <- matrix(0, 2, length(Age_range))
-for (i in Age_range) {
-  a21[1,which(Age_range == i)] <- length(which(d$age[d$soc_id == 1]==i & d$gender[d$soc_id == 1] == 1))
-  a21[2,which(Age_range == i)] <- length(which(d$age[d$soc_id == 1]==i & d$gender[d$soc_id == 1] == 2))
+for (pop_id in 1:2) {
+  for (gender in 1:2) {
+    for (i in Age_range) {
+      SampleD_samplediff[pop_id, gender, i] <- length(which(d$age[d$soc_id == pop_id]==i & d$gender[d$soc_id == pop_id] == gender))
+    }  
+  }
 }
-a22 <- matrix(0, 2, length(Age_range))
-for (i in Age_range) {
-  a22[1,which(Age_range == i)] <- length(which(d$age[d$soc_id == 2]==i & d$gender[d$soc_id == 2] == 1))
-  a22[2,which(Age_range == i)] <- length(which(d$age[d$soc_id == 2]==i & d$gender[d$soc_id == 2] == 2))
-}
-
 
 
 
@@ -301,24 +296,24 @@ for (i in Age_range) {
 p_logit_culture <-c(-3, -1)
 
 #Effects of age and gender
-b_age <- 0.02
-b_gender <- 2.5
+b_age <- 0.03
+b_gender <- 2
 
 
 for(i in 1:(2*N)) d$outcome[i] <- rbinom(1, 1, inv_logit(p_logit_culture[d$soc_id[i]] + b_age*d$age[i] + b_gender*(d$gender[i]-1)) )
 
 #Compute expected prosociality in both populations
-phi2 <- c()
+phi_samplediff <- c()
 for (pop in 1:2) {
   expect_pos = 0
   total = 0
   for (a in 1:2){
     for (b in 1:max(Age_range)){
-      total = total + D2[pop,a,b];
-      expect_pos = expect_pos + D2[pop,a,b] * inv_logit(p_logit_culture[pop] + b_gender*(a-1) + b_age*b);
+      total = total + D_samplediff[pop,a,b];
+      expect_pos = expect_pos + D_samplediff[pop,a,b] * inv_logit(p_logit_culture[pop] + b_gender*(a-1) + b_age*b);
     }
   }  
-  phi2[pop] = expect_pos / total
+  phi_samplediff[pop] = expect_pos / total
 }
 
 
@@ -327,14 +322,14 @@ for (pop in 1:2) {
 
 
 # Prepare lists for stan
-d1 <- list(N = N,
+d1_samplediff <- list(N = N,
            MA = max(Age_range),
            gender = d$gender[d$soc_id==1], 
            age = d$age[d$soc_id==1],
            outcome = d$outcome[d$soc_id==1]
 )
 
-d2 <- list(N = N,
+d2_samplediff <- list(N = N,
            MA = max(Age_range),
            gender = d$gender[d$soc_id==2], 
            age = d$age[d$soc_id==2],
@@ -343,28 +338,27 @@ d2 <- list(N = N,
 
 
 #
-d1$P_same <-a21
-d1$P_other <-  D2[1,,] * 1000000000
-mode(d1$P_other) <- 'integer'
+d1_samplediff$P_same <- SampleD_samplediff[1,,]
+d1_samplediff$P_other <-  D_samplediff[1,,] * 1000000000
+mode(d1_samplediff$P_other) <- 'integer'
 
-d2$P_same <- a22
 
-d2$P_other <-  D2[2,,] * 1000000000
-
-mode(d2$P_other) <- 'integer'
-
+d2_samplediff$P_same <- SampleD_samplediff[2,,]
+d2_samplediff$P_other <-  D_samplediff[2,,] * 1000000000
+mode(d2_samplediff$P_other) <- 'integer'
 
 
 
 
 
 
-m21 <- stan( model_code  = m2a_MRP_GP_gender_same , data=d1 ,iter = 2000, cores = 1, seed=1, chains=1, control = list(adapt_delta=0.95, max_treedepth = 13))  
 
-m22 <- stan( model_code  = m2a_MRP_GP_gender_same , data=d2 ,iter = 2000, cores = 1, seed=1, chains=1, control = list(adapt_delta=0.95, max_treedepth = 13))  
+m_samplediff1 <- stan( model_code  = m2a_MRP_GP_gender_same , data=d1_samplediff ,iter = 4000, cores = 1, seed=1, chains=1, control = list(adapt_delta=0.95, max_treedepth = 13))  
 
-m21samp <- extract.samples(m21)
-m22samp <- extract.samples(m22)
+m_samplediff2 <- stan( model_code  = m2a_MRP_GP_gender_same , data=d2_samplediff ,iter = 4000, cores = 1, seed=1, chains=1, control = list(adapt_delta=0.95, max_treedepth = 13))  
+
+s_samplediff1 <- extract.samples(m_samplediff1)
+s_samplediff2 <- extract.samples(m_samplediff2)
 
 
 

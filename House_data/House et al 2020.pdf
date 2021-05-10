@@ -1,0 +1,59 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="">
+<meta name="author" content="">
+<title>eRessources - Sign in</title>
+
+<!-- Bootstrap core CSS -->
+<link href="/public/bootstrap.min.css" rel="stylesheet" type="text/css" />
+
+<!-- Custom styles for this template -->
+<link href="/public/login.css" rel="stylesheet">
+<link rel="shortcut icon" href="/public/favicon.ico" type="image/x-icon"/>
+<!--<link rel="stylesheet" type="text/css" href="/public/styles.css">-->
+<script type="text/javascript" src="/public/jquery-1.10.1.min.js"></script>
+<script type="text/javascript" src="/public/script.js"></script>
+</head>
+<body>
+<div class="container">
+  <div class="login-box">
+    <div class="login-box-logo text-center"> <img style="width:90px;height:90px;" title="Logo" alt="Logo" src="/public/logo.png">
+      <h4>MPI-EVA Library</h4>
+    </div>
+    <div class="login-box-body"> 
+      
+      <!--
+<p>
+This is login.htm from the docs subdirectory.  Review
+<a href="http://www.oclc.org/us/en/support/documentation/ezproxy/url/admin/">http://www.oclc.org/us/en/support/documentation/ezproxy/url/admin/</a>
+for information on how to create an administrative user account and
+<a href="http://www.oclc.org/us/en/support/documentation/ezproxy/usr/">www.oclc.org/us/en/support/documentation/ezproxy/usr/</a>
+for information on user authentication options.
+</p>
+//-->
+      <form action="/login" method="post" class="form-login">
+        <h2 class="form-login-heading">Please sign in</h2>
+        <div class="form-login-text">
+          <p>This site allows you to access the Library's and MPG's e-resources from off-campus.</p>
+          <p>Please enter your domain/email username and password to login:</p>
+        </div>
+        <input type="hidden" name="url" value="https://www.nature.com/articles/s41562-019-0734-z.pdf" />
+        <label for="userId" class="sr-only">Email address</label>
+        <input type="text" class="form-control" name="user" id="userId" placeholder="Username" required autofocus>
+        <label for="inputPassword" class="sr-only">Password</label>
+        <input id="inputPassword" type="password" name="pass" placeholder="Password" class="form-control" required>
+        <button class="btn btn-default btn-green" type="submit">Sign in</button>
+      </form>
+    </div>
+    <div class="imprint text-center">
+	<a href="https://www.eva.mpg.de/imprint.html" target="_blank">Imprint</a> |
+	<a href="https://www.eva.mpg.de/privacy-policy.html" target="_blank">Privacy Policy</a>
+    </div>
+  </div>
+</div>
+</body>
+</html>

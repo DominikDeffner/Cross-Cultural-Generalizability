@@ -1,5 +1,6 @@
 
 library(readr)
+library(rethinking)
 library(plotrix)
 
 #Population Distribution of Vanuatu and Berlin
@@ -215,8 +216,8 @@ generated quantities{
 
 
 library(rstan)
-m_Berlin <- stan( model_code  = m2a_MRP_GP_gender_same , data=d_list_Berlin ,iter = 5000, cores = 1, seed=1, chains=1, control = list(adapt_delta=0.95, max_treedepth = 13))  
-m_Vanuatu <- stan( model_code  = m2a_MRP_GP_gender_same , data=d_list_Vanuatu ,iter = 5000, cores = 1, seed=1, chains=1, control = list(adapt_delta=0.95, max_treedepth = 13))  
+m_Berlin <- stan( model_code  = m2a_MRP_GP_gender_same , data=d_list_Berlin ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.999, max_treedepth = 13))  
+m_Vanuatu <- stan( model_code  = m2a_MRP_GP_gender_same , data=d_list_Vanuatu ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.999, max_treedepth = 13))  
 
 
 

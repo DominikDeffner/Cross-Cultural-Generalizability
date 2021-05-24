@@ -35,15 +35,25 @@ for (j in sort(unique(data$fieldid))) {
 
 
 
+Demo <- matrix(0, 6, 12)
+for (j in sort(unique(data$fieldid))) {
+  for (i in 4:15) {
+      Demo[j, which(4:15 == i)] <- length(which(data$fieldid==j & data$age==i))
+    
+  }
+}          
 
 
-Demo_Phoenix <- matrix(0, 11, 2)
-Demo_Pune    <- matrix(0, 11, 2)
 
-for (i in 4:14) {
+
+
+Demo_Phoenix <- matrix(0, 12, 2)
+Demo_Pune    <- matrix(0, 12, 2)
+
+for (i in 4:15) {
   for (g in 1:2) {
-    Demo_Phoenix[which(4:14 == i),g] <- length(which(data_Phoenix$age==i & data_Phoenix$gender== g))
-    Demo_Pune[which(4:14 == i),g]     <- length(which(data_Pune$age==i & data_Pune$gender == g))
+    Demo_Phoenix[which(4:15 == i),g] <- length(which(data_Phoenix$age==i & data_Phoenix$gender== g))
+    Demo_Pune[which(4:15 == i),g]     <- length(which(data_Pune$age==i & data_Pune$gender == g))
     
   }
 }
@@ -81,9 +91,8 @@ d_list <- list(N = nrow(data),
                age = data$age - 3,
                condition = data$condition -1,
                outcome = data$choice, 
-               gender = data$gender, 
-               P_empirical = t(Demo_Pune),
-               P_other = t(Demo_Phoenix))
+               gender = data$gender,
+               Demo = Demo)
 
 
 
@@ -93,10 +102,8 @@ d_list <- list(N = nrow(data),
 
 
 
-
-{
   
-  m <- "
+ model <- "
 functions{
   matrix GPL(int K, real C, real D, real S){
    matrix[K,K] Rho;                       
@@ -126,18 +133,18 @@ data {
   int condition[N];
   int outcome[N];
   int gender[N];
-  int<lower = 0> P_empirical[2,MA];   // Here we enter data matrix with demographic constitution of target population
-  int<lower = 0> P_other[2,MA];   // Here we enter data matrix with demographic constitution of target population
+  int Demo[6, MA];
   }
 
 parameters {
   real alpha[N_pop];
-  real b_prime;
-  vector[MA] age_effect;    //Vector for GP age effects
+  real b_prime[N_pop];
   
-  real<lower=0> eta;
-  real<lower=0> sigma;
-  real<lower=0, upper=1> rho;
+  matrix[N_pop, MA] age_effect;    //Vector for GP age effects
+  
+  real<lower=0> eta[N_pop];
+  real<lower=0> sigma[N_pop];
+  real<lower=0, upper=1> rho[N_pop];
 }
 
 model {
@@ -149,75 +156,62 @@ model {
   sigma ~ exponential(1);
   rho ~ beta(10, 1);
 
-   age_effect ~ multi_normal_cholesky( rep_vector(0, MA) , GPL(MA, rho, eta, sigma) );
+ for (h in 1:N_pop){
+    age_effect[h,] ~ multi_normal_cholesky( rep_vector(0, MA) , GPL(MA, rho[h], eta[h], sigma[h]) );
+ }
     
 
   for ( i in 1:N ) {
-   p[i] = alpha[pop_id[i]] + (b_prime + age_effect[age[i]]) * condition[i];
+   p[i] = alpha[pop_id[i]] + (b_prime[pop_id[i]] + age_effect[pop_id[i],age[i]]) * condition[i];
   }
 
  outcome ~ binomial_logit(1, p);
 }
 
-"
-
 
 generated quantities{
+
+real empirical_p[N_pop];
+real transport_p[N_pop];
+  
+ for (h in 1:N_pop){
   real expect_pos = 0;
-  real<lower = 0, upper = 1> p_source;  // This is value for p in the source population 
-  real<lower = 0, upper = 1> p_pop;  // This is value for p in the target population 
-  real<lower = 0, upper = 1> p_other;  // This is value for p in the target population 
-  
   int total = 0;
-  vector[MA] pred_p_m;
-  vector[MA] pred_p_f;
-  
-  for (a in 1:2)
     for (b in 1:MA){
-      total += P_empirical[a,b];
-      expect_pos += P_empirical[a,b] * inv_logit(alpha[a] + age_effect[a,b]);
+      total += Demo[h,b];
+      expect_pos += Demo[h,b] * inv_logit(b_prime[h] + age_effect[h,b]);
     }
-  
-  p_source = expect_pos / total;
-  
-  total = 0;
-  expect_pos = 0;
-  
-  for (a in 1:2)
+    
+  empirical_p[h] = expect_pos / total;
+ }
+
+ for (h in 1:N_pop){
+  real expect_pos = 0;
+  int total = 0;
     for (b in 1:MA){
-      total += P_other[a,b];
-      expect_pos += P_other[a,b] * inv_logit(alpha[a] + age_effect[a,b]);
+      total += Demo[1,b];
+      expect_pos += Demo[1,b] * inv_logit(b_prime[h] + age_effect[h,b]);
     }
-  
-  p_other = expect_pos / total;
-  
-  
-  total = 0;
-  expect_pos = 0;
-  
-  for (a in 1:2)
-    for (b in 1:MA){
-      total += P_Pop[a,b];
-      expect_pos += P_Pop[a,b] * inv_logit(alpha[a] + age_effect[a,b]);
-    }
-  
-  p_pop = expect_pos / total;
-  
-  
-  pred_p_m = inv_logit(alpha[1] + age_effect[1,]');
-  pred_p_f = inv_logit(alpha[2] + age_effect[2,]');
+    
+  transport_p[h] = expect_pos / total;
+}
+
 }
 
 
+"
 
-}
 
 
 
 
 
 library(rstan)
-m <- stan( model_code  = m , data= d_list ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.9, max_treedepth = 13))  
+m4 <- stan( model_code  = model , data= d_list ,iter = 2000, cores = 1, seed=1, chains=1, control = list(adapt_delta=0.9, max_treedepth = 13))  
+
+
+
+
 
 m_Phoenix <- stan( model_code  = m2 , data= d_list_Phoenix ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.9, max_treedepth = 13))  
 

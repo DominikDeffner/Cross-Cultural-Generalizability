@@ -20,26 +20,11 @@ data$gender <- data$GENDER_1female + 1
 # Exclude data from "both ok"
 data <- subset(data, data$condition != 3)
 
-data_Phoenix <- data[which(data$fieldid == 3),]
-data_Pune    <- data[which(data$fieldid == 4),]
-
-
-Demo <- array(0, dim = c(6 , 12, 2))
-for (j in sort(unique(data$fieldid))) {
-  for (i in 4:15) {
-    for (g in 1:2) {
-      Demo[j, which(4:14 == i),g] <- length(which(data$fieldid==j & data$age==i & data$gender== g))
-    }
-  }
-}          
-
-
 
 Demo <- matrix(0, 6, 12)
 for (j in sort(unique(data$fieldid))) {
   for (i in 4:15) {
       Demo[j, which(4:15 == i)] <- length(which(data$fieldid==j & data$age==i))
-    
   }
 }          
 
@@ -47,42 +32,7 @@ for (j in sort(unique(data$fieldid))) {
 
 
 
-Demo_Phoenix <- matrix(0, 12, 2)
-Demo_Pune    <- matrix(0, 12, 2)
-
-for (i in 4:15) {
-  for (g in 1:2) {
-    Demo_Phoenix[which(4:15 == i),g] <- length(which(data_Phoenix$age==i & data_Phoenix$gender== g))
-    Demo_Pune[which(4:15 == i),g]     <- length(which(data_Pune$age==i & data_Pune$gender == g))
-    
-  }
-}
-
-
-
 #Prepare for stan
-
-d_list_Phoenix <- list(N = nrow(data_Phoenix), 
-                       MA = 11,
-                       age = data_Phoenix$age - 3,
-                       condition = data_Phoenix$condition -1,
-                       outcome = data_Phoenix$choice, 
-                       gender = data_Phoenix$gender, 
-                       P_empirical = t(Demo_Phoenix),
-                       P_other = t(Demo_Pune))
-
-
-d_list_Pune <- list(N = nrow(data_Pune), 
-                    MA = 11,
-                    age = data_Pune$age - 3,
-                    condition = data_Pune$condition -1,
-                    outcome = data_Pune$choice, 
-                    gender = data_Pune$gender, 
-                    P_empirical = t(Demo_Pune),
-                    P_other = t(Demo_Phoenix))
-
-
-
 
 d_list <- list(N = nrow(data), 
                N_pop = length(unique(data$fieldid)),
@@ -92,18 +42,12 @@ d_list <- list(N = nrow(data),
                condition = data$condition -1,
                outcome = data$choice, 
                gender = data$gender,
-               Demo = Demo)
+               Demo = Demo,
+               Ref = 6)
 
 
 
-
-
-
-
-
-
-  
- model <- "
+model <- "
 functions{
   matrix GPL(int K, real C, real D, real S){
    matrix[K,K] Rho;                       
@@ -133,7 +77,8 @@ data {
   int condition[N];
   int outcome[N];
   int gender[N];
-  int Demo[6, MA];
+  int Demo[N_pop, MA];
+  int Ref;
   }
 
 parameters {
@@ -173,28 +118,21 @@ generated quantities{
 
 real empirical_p[N_pop];
 real transport_p[N_pop];
-  
- for (h in 1:N_pop){
-  real expect_pos = 0;
-  int total = 0;
-    for (b in 1:MA){
-      total += Demo[h,b];
-      expect_pos += Demo[h,b] * inv_logit(b_prime[h] + age_effect[h,b]);
-    }
-    
-  empirical_p[h] = expect_pos / total;
- }
 
  for (h in 1:N_pop){
-  real expect_pos = 0;
-  int total = 0;
-    for (b in 1:MA){
-      total += Demo[1,b];
-      expect_pos += Demo[1,b] * inv_logit(b_prime[h] + age_effect[h,b]);
+   real empirical_total = 0;
+   real transport_total = 0;
+
+    for ( i in 1:MA){
+      empirical_total+= Demo[h,i] * (inv_logit(alpha[h]) - inv_logit(alpha[h] + (b_prime[h] + age_effect[h,i])) );
+      transport_total+= Demo[Ref,i] * (inv_logit(alpha[h]) - inv_logit(alpha[h] + (b_prime[h] + age_effect[h,i])) );
     }
-    
-  transport_p[h] = expect_pos / total;
-}
+    empirical_p[h] = empirical_total / sum(Demo[h,]);
+
+    transport_p[h] = transport_total / sum(Demo[Ref,]);
+ }
+
+
 
 }
 
@@ -203,21 +141,55 @@ real transport_p[N_pop];
 
 
 
-
-
-
 library(rstan)
-m4 <- stan( model_code  = model , data= d_list ,iter = 2000, cores = 1, seed=1, chains=1, control = list(adapt_delta=0.9, max_treedepth = 13))  
+
+ 
+m <- stan( model_code  = model , data= d_list ,iter = 1000, cores = 1, seed=1, chains=1, control = list(adapt_delta=0.9, max_treedepth = 13))  
+
+s <- extract.samples(m)
 
 
+library(scales)
+#color stuff
+require(RColorBrewer)#load package
+col.pal <- brewer.pal(8, "Dark2") #create a pallette which you loop over for corresponding values
+seqoverall <- seq
+
+Society <- c("Berlin (GER)","La Plata (ARG)","Phoenix (USA)", "Pune (IND)", "Shuar (ECU)", "Wiichi (ARG)")
 
 
+graphics.off()
+png("Transport.png", res = 600, height = 20, width = 15, units = "cm")
 
-m_Phoenix <- stan( model_code  = m2 , data= d_list_Phoenix ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.9, max_treedepth = 13))  
+par(mfrow= c(6,2),
+    oma=c(3.2,2,3,0),
+    mar=c(2,0,1,1))
+
+for (i in 1:6) {
+  
+  dens <- density(s$empirical_p[,i])
+  x1 <- min(which(dens$x >= quantile(s$empirical_p[,i], 0)))
+  x2 <- max(which(dens$x <  quantile(s$empirical_p[,i], 1)))
+  plot(dens, xlim = c(-1,1), ylim = c(0,max(dens$y)), type="n", ann = FALSE, bty = "n", yaxt = "n")
+  with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[i],alpha = 0.3), border = NA))
+  abline(v = 0, lty = 2)
+  mtext(Society[i], side = 2, line = 0.5, cex = 0.8)
+  if ( i == 1 ) mtext("Emprirical Effects", side = 3, line = 2.5, cex = 1.3)
+    
+  dens <- density(s$transport_p[,i])
+  x1 <- min(which(dens$x >= quantile(s$transport_p[,i], 0)))
+  x2 <- max(which(dens$x <  quantile(s$transport_p[,i], 1)))
+  plot(dens, xlim = c(-1,1), ylim = c(0,max(dens$y)), type="n", ann = FALSE, bty = "n", yaxt = "n")
+  with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[i],alpha = 0.3), border = NA))
+  abline(v = 0, lty = 2)
+  if ( i == 1 ) mtext("Transported Effects", side = 3, line = 2.5, cex = 1.3)
+  
+}
+
+mtext("Effect of norm prime on prosocial choices", side = 1,line = 2,outer = TRUE, cex = 1)
+
+dev.off()
 
 
-
-
-m_Pune <- stan( model_code  = m2 , data= d_list_Pune ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.9, max_treedepth = 13))  
 
 

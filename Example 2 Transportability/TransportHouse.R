@@ -30,8 +30,6 @@ for (j in sort(unique(data$fieldid))) {
 
 
 
-
-
 #Prepare for stan
 
 d_list <- list(N = nrow(data), 
@@ -39,7 +37,7 @@ d_list <- list(N = nrow(data),
                MA = 12,
                pop_id = data$fieldid,
                age = data$age - 3,
-               condition = data$condition -1,
+               condition = data$condition-1,
                outcome = data$choice, 
                gender = data$gender,
                Demo = Demo,
@@ -96,7 +94,7 @@ model {
   vector[N] p;
 
   alpha ~ normal(0, 1);
-  b_prime ~ normal(0, 1);
+  b_prime ~ normal(0, 3);
   eta ~ exponential(2);
   sigma ~ exponential(1);
   rho ~ beta(10, 1);
@@ -141,12 +139,67 @@ real transport_p[N_pop];
 
 
 
+model_basic <- "
+
+data {
+  int N;
+  int N_pop;
+  int MA;
+  int age[N];
+  int pop_id[N];
+  int condition[N];
+  int outcome[N];
+  int gender[N];
+  int Demo[N_pop, MA];
+  int Ref;
+  }
+
+parameters {
+  real alpha[N_pop];
+  real b_prime[N_pop];
+}
+
+model {
+  vector[N] p;
+
+  alpha ~ normal(0, 1);
+  b_prime ~ normal(0, 3);
+
+  for ( i in 1:N ) {
+   p[i] = alpha[pop_id[i]] + b_prime[pop_id[i]] * condition[i];
+  }
+
+ outcome ~ binomial_logit(1, p);
+}
+
+generated quantities{
+
+real empirical_p[N_pop];
+ for (h in 1:N_pop){
+      empirical_p[h] =  inv_logit(alpha[h]) - inv_logit(alpha[h] + b_prime[h]);
+ }
+ 
+}
+ 
+"
+
+
+
 library(rstan)
 
- 
-m <- stan( model_code  = model , data= d_list ,iter = 1000, cores = 1, seed=1, chains=1, control = list(adapt_delta=0.9, max_treedepth = 13))  
+m <- list()
 
-s <- extract.samples(m)
+for (i in 1:6) {
+  d_list$Ref <- i
+  m <- stan( model_code  = model , data= d_list ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.95, max_treedepth = 15))  
+}
+
+m_empirical <- stan( model_code  = model_basic , data= d_list ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.95, max_treedepth = 15))  
+m_transport <- stan( model_code  = model , data= d_list ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.95, max_treedepth = 15))  
+
+
+s_basic <- extract.samples(m_empirical)
+s <- extract.samples(m_transport)
 
 
 library(scales)
@@ -155,11 +208,14 @@ require(RColorBrewer)#load package
 col.pal <- brewer.pal(8, "Dark2") #create a pallette which you loop over for corresponding values
 seqoverall <- seq
 
-Society <- c("Berlin (GER)","La Plata (ARG)","Phoenix (USA)", "Pune (IND)", "Shuar (ECU)", "Wiichi (ARG)")
+Society <- c("Berlin (GER)","La Plata (ARG)","Phoenix (USA)", "Pune (IND)", "Shuar (ECU)", "Wichí (ARG)")
+
+
+
 
 
 graphics.off()
-png("Transport.png", res = 600, height = 20, width = 15, units = "cm")
+png("Transport.png", res = 900, height = 20, width = 15, units = "cm")
 
 par(mfrow= c(6,2),
     oma=c(3.2,2,3,0),
@@ -167,26 +223,76 @@ par(mfrow= c(6,2),
 
 for (i in 1:6) {
   
-  dens <- density(s$empirical_p[,i])
-  x1 <- min(which(dens$x >= quantile(s$empirical_p[,i], 0)))
-  x2 <- max(which(dens$x <  quantile(s$empirical_p[,i], 1)))
-  plot(dens, xlim = c(-1,1), ylim = c(0,max(dens$y)), type="n", ann = FALSE, bty = "n", yaxt = "n")
+  dens <- density(s_basic$empirical_p[,i])
+  x1 <- min(which(dens$x >= quantile(s_basic$empirical_p[,i], 0)))
+  x2 <- max(which(dens$x <  quantile(s_basic$empirical_p[,i], 1)))
+  plot(dens, xlim = c(-0.3,0.8), ylim = c(0,max(dens$y)), type="n", ann = FALSE, bty = "n", yaxt = "n")
   with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[i],alpha = 0.3), border = NA))
   abline(v = 0, lty = 2)
   mtext(Society[i], side = 2, line = 0.5, cex = 0.8)
-  if ( i == 1 ) mtext("Emprirical Effects", side = 3, line = 2.5, cex = 1.3)
+  if ( i == 1 ) mtext("Emprirical Effect", side = 3, line = 2.5, cex = 1.1)
     
   dens <- density(s$transport_p[,i])
   x1 <- min(which(dens$x >= quantile(s$transport_p[,i], 0)))
   x2 <- max(which(dens$x <  quantile(s$transport_p[,i], 1)))
-  plot(dens, xlim = c(-1,1), ylim = c(0,max(dens$y)), type="n", ann = FALSE, bty = "n", yaxt = "n")
+  plot(dens, xlim = c(-0.3,0.8), ylim = c(0,max(dens$y)), type="n", ann = FALSE, bty = "n", yaxt = "n")
   with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[i],alpha = 0.3), border = NA))
   abline(v = 0, lty = 2)
-  if ( i == 1 ) mtext("Transported Effects", side = 3, line = 2.5, cex = 1.3)
+  if ( i == 1 ) mtext("Transported to WichÍ (ARG)", side = 3, line = 2.5, cex = 1.1)
   
 }
 
 mtext("Effect of norm prime on prosocial choices", side = 1,line = 2,outer = TRUE, cex = 1)
+
+dev.off()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+graphics.off()
+png("Transport2.png", res = 1200, height = 12, width = 16, units = "cm")
+
+par(mfrow= c(3,2),
+    oma=c(3,0,3,0),
+    mar=c(2,0,1,1))
+
+for (i in 1:6) {
+  
+  dens <- density(s_basic$empirical_p[,i])
+  x1 <- min(which(dens$x >= quantile(s_basic$empirical_p[,i], 0)))
+  x2 <- max(which(dens$x <  quantile(s_basic$empirical_p[,i], 1)))
+  plot(dens, xlim = c(-0.3,0.9), ylim = c(0,max(dens$y)), type="n", ann = FALSE, bty = "n", yaxt = "n")
+  with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[i],alpha = 0.7), border = NA))
+  abline(v = 0, lty = 2)
+  mtext(Society[i], side = 2, line = -3, cex = 0.7)
+  if (i ==1) legend("topright", c("Empirical estimates", "Transported estimates"), col = c(alpha("black",alpha = 0.7),alpha("black",alpha = 0.2)), cex = 0.7, lwd = 8, lty = 1, bty = "n")
+  par(new = TRUE)
+  
+  dens <- density(s$transport_p[,i])
+  x1 <- min(which(dens$x >= quantile(s$transport_p[,i], 0)))
+  x2 <- max(which(dens$x <  quantile(s$transport_p[,i], 1)))
+  plot(dens, xlim = c(-0.3,0.9), ylim = c(0,max(dens$y)), type="n", ann = FALSE, bty = "n", yaxt = "n")
+  with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[i],alpha = 0.2), border = NA))
+  abline(v = 0, lty = 2)
+
+}
+
+mtext("Effect of norm prime on prosocial choices", side = 1,line = 1.5,outer = TRUE, cex = 0.8)
+mtext("'Transport' of causal effect to the Wichí (ARG)", side = 3,line = 1.5,outer = TRUE, cex = 1)
 
 dev.off()
 

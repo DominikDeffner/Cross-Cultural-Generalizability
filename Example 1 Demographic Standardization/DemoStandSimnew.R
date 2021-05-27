@@ -3,7 +3,6 @@
 # The aim here is to simulate and analyze exemplary data sets generated from different processes
 # a) Disparities arise only from real demographic differences among populations (e.g. one is older/more men)
 # b) Disparities arise only from differences in sampling procedure 
-# c) Disparities arise from both processes
 
 library(rethinking)
 library(scales)
@@ -64,10 +63,10 @@ for (pop_id in 1:2) {
 }
 
 
-p_logit_culture <-c(-3, -1)
+p_logit_culture <-c(-3, -1.5)
 
 #Effects of age and gender
-b_age <- 0.03
+b_age <- 0.04
 b_gender <- 2
 
 #Generate observations
@@ -117,8 +116,8 @@ d1_popdiff$P_same  <- SampleD_popdiff[1,,]
 d1_popdiff$P_other <-  SampleD_popdiff[2,,]
 
 
-d1_popdiff$P_same  <- SampleD_popdiff[2,,]
-d1_popdiff$P_other <-  SampleD_popdiff[1,,]
+d2_popdiff$P_same  <- SampleD_popdiff[2,,]
+d2_popdiff$P_other <-  SampleD_popdiff[1,,]
 
 
 
@@ -169,7 +168,7 @@ parameters {
 model {
   vector[N] p;
 
-  alpha ~ normal(0, 1);
+  alpha ~ normal(0, 2);
 
   eta ~ exponential(2);
   sigma ~ exponential(1);
@@ -227,7 +226,7 @@ generated quantities{
 
 m_popdiff1 <- stan( model_code  = m2a_MRP_GP_gender_same , data=d1_popdiff ,iter = 4000, cores = 1, seed=1, chains=1, control = list(adapt_delta=0.95, max_treedepth = 13))  
 
-m_popdiff2 <- stan( model_code  = m2a_MRP_GP_gender_same , data=d1_popdiff ,iter = 4000, cores = 1, seed=1, chains=1, control = list(adapt_delta=0.95, max_treedepth = 13))  
+m_popdiff2 <- stan( model_code  = m2a_MRP_GP_gender_same , data=d2_popdiff ,iter = 4000, cores = 1, seed=1, chains=1, control = list(adapt_delta=0.95, max_treedepth = 13))  
 
 s_popdiff1 <- extract.samples(m_popdiff1)
 s_popdiff2 <- extract.samples(m_popdiff2)
@@ -273,8 +272,8 @@ for (pop_id in 1:2) {
 
 #Simulate Genders
 
-d$gender[d$soc_id==1] <- sample(c(1,2),N, replace = TRUE, prob = c(0.35, 0.65)) 
-d$gender[d$soc_id==2] <- sample(c(1,2),N, replace = TRUE, prob = c(0.75, 0.25)) 
+d$gender[d$soc_id==1] <- sample(c(1,2),N, replace = TRUE, prob = c(0.3, 0.7)) 
+d$gender[d$soc_id==2] <- sample(c(1,2),N, replace = TRUE, prob = c(0.8, 0.2)) 
 
 
 SampleD_samplediff <- array(NA,c(2,2,length(Age_range)))
@@ -293,10 +292,10 @@ for (pop_id in 1:2) {
 #Generate observations
 
 #Effect of "culture" that's independent of demography
-p_logit_culture <-c(-3, -1)
+p_logit_culture <-c(-3, -1.5)
 
 #Effects of age and gender
-b_age <- 0.03
+b_age <- 0.04
 b_gender <- 2
 
 
@@ -339,12 +338,12 @@ d2_samplediff <- list(N = N,
 
 #
 d1_samplediff$P_same <- SampleD_samplediff[1,,]
-d1_samplediff$P_other <-  D_samplediff[1,,] * 1000000000
+d1_samplediff$P_other <-  D_samplediff[1,,] * 1e9
 mode(d1_samplediff$P_other) <- 'integer'
 
 
 d2_samplediff$P_same <- SampleD_samplediff[2,,]
-d2_samplediff$P_other <-  D_samplediff[2,,] * 1000000000
+d2_samplediff$P_other <-  D_samplediff[2,,] * 1e9
 mode(d2_samplediff$P_other) <- 'integer'
 
 

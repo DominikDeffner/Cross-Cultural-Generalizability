@@ -176,10 +176,10 @@ png("AgeCurves.png", res = 900, height = 16, width = 24, units = "cm")
   
   
   
-{  
+
 
 graphics.off()
-png("DemostandLarge2.png", res = 900, height = 25, width = 25, units = "cm")
+png("DemostandLarge.png", res = 900, height = 22, width = 25, units = "cm")
 
 
 
@@ -233,24 +233,25 @@ mtext("Number of individuals per age class and gender", side = 1,line = 4,at = -
 dens <- density(s_popdiff1$phi)
 x1 <- min(which(dens$x >= quantile(s_popdiff1$phi, 0)))  
 x2 <- max(which(dens$x <  quantile(s_popdiff1$phi, 1)))
-plot(dens, xlim = c(0,1), ylim = c(0,30), type="n", ann = FALSE, bty = "n")
-with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[4],alpha = 0.9), border = NA))
+plot(dens, xlim = c(0,1), ylim = c(0,25), type="n", ann = FALSE, bty = "n")
+with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[1],alpha = 0.9), border = NA))
 abline(v = phi_popdiff[1], lty = 2, lwd = 2)
 par(new=TRUE)
 dens <- density(s_popdiff1$psi)
 x1 <- min(which(dens$x >= quantile(s_popdiff1$psi, 0)))  
 x2 <- max(which(dens$x <  quantile(s_popdiff1$psi, 1)))
-plot(dens, xlim = c(0,1), ylim = c(0,30), type="n", ann = FALSE, bty = "n")
-with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[4],alpha = 0.3), border = NA))
+plot(dens, xlim = c(0,1), ylim = c(0,25), type="n", ann = FALSE, bty = "n")
+with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[1],alpha = 0.3), border = NA))
 mtext("Density", side = 2,line = 3, outer = F, cex = 1)
 
+legend("topright", c("Empirical","Poststr. to Pop II"), col = c(alpha(col.pal[1],alpha = 0.9),alpha(col.pal[1],alpha = 0.3)), lwd = 6, bty="n", cex = 0.9)
 
 
 dens <- density(s_popdiff2$phi)
 x1 <- min(which(dens$x >= quantile(s_popdiff2$phi, 0)))  
 x2 <- max(which(dens$x <  quantile(s_popdiff2$phi, 1)))
-plot(dens, xlim = c(0,1), ylim = c(0,30), type="n", ann = FALSE, bty = "n", yaxt = "n")
-with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[5],alpha = 0.9), border = NA))
+plot(dens, xlim = c(0,1), ylim = c(0,25), type="n", ann = FALSE, bty = "n", yaxt = "n")
+with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[4],alpha = 0.9), border = NA))
 abline(v = phi_popdiff[2], lty = 2, lwd = 2)
 
 par(new=TRUE)
@@ -258,11 +259,12 @@ par(new=TRUE)
 dens <- density(s_popdiff2$psi)
 x1 <- min(which(dens$x >= quantile(s_popdiff2$psi, 0)))
 x2 <- max(which(dens$x <  quantile(s_popdiff2$psi, 1)))
-plot(dens, xlim = c(0,1), ylim = c(0,30), type="n", ann = FALSE, bty = "n", yaxt = "n")
-with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[5],alpha = 0.3), border = NA))
+plot(dens, xlim = c(0,1), ylim = c(0,25), type="n", ann = FALSE, bty = "n", yaxt = "n")
+with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[4],alpha = 0.3), border = NA))
 
 mtext("Probability of choosing prosocial option", side = 1,line = 2.9,at=-0.1, outer = F, cex = 0.9)
-legend("topleft", title = "Population", c("I","I (poststratified)", "II","II (poststratified)"), col = c(alpha(col.pal[4],alpha = 0.9),alpha(col.pal[4],alpha = 0.3),alpha(col.pal[5],alpha = 0.9),alpha(col.pal[5],alpha = 0.3)), lwd = 6, bty="n", cex = 1)
+
+legend("topleft", c("Empirical","Poststr. to Pop I"), col = c(alpha(col.pal[4],alpha = 0.9),alpha(col.pal[4],alpha = 0.3)), lwd = 6, bty="n", cex =  0.9)
 
 
 
@@ -276,23 +278,25 @@ legend("topleft", title = "Population", c("I","I (poststratified)", "II","II (po
 dens <- density(s_samplediff1$phi)
 x1 <- min(which(dens$x >= quantile(s_samplediff1$phi, 0)))  
 x2 <- max(which(dens$x <  quantile(s_samplediff1$phi, 1)))
-plot(dens, xlim = c(0,1), ylim = c(0,30), type="n", yaxt = "n",ann = FALSE, bty = "n")
-with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[4],alpha = 0.9), border = NA))
+plot(dens, xlim = c(0,1), ylim = c(0,25), type="n", yaxt = "n",ann = FALSE, bty = "n")
+with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[5],alpha = 0.9), border = NA))
 abline(v = phi_samplediff[1], lty = 2, lwd = 2)
 par(new=TRUE)
 dens <- density(s_samplediff1$psi)
 x1 <- min(which(dens$x >= quantile(s_samplediff1$psi, 0)))  
 x2 <- max(which(dens$x <  quantile(s_samplediff1$psi, 1)))
-plot(dens, xlim = c(0,1), ylim = c(0,30), type="n", ann = FALSE, bty = "n", yaxt = "n")
-with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[4],alpha = 0.3), border = NA))
+plot(dens, xlim = c(0,1), ylim = c(0,25), type="n", ann = FALSE, bty = "n", yaxt = "n")
+with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[5],alpha = 0.3), border = NA))
+
+legend("topright", c("Empirical","Poststr. to Pop I"), col = c(alpha(col.pal[5],alpha = 0.9),alpha(col.pal[5],alpha = 0.3)), lwd = 6, bty="n", cex = 0.9)
 
 
 
 dens <- density(s_samplediff2$phi)
 x1 <- min(which(dens$x >= quantile(s_samplediff2$phi, 0)))  
 x2 <- max(which(dens$x <  quantile(s_samplediff2$phi, 1)))
-plot(dens, xlim = c(0,1), ylim = c(0,30), type="n", ann = FALSE, bty = "n", yaxt = "n")
-with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[5],alpha = 0.9), border = NA))
+plot(dens, xlim = c(0,1), ylim = c(0,25), type="n", ann = FALSE, bty = "n", yaxt = "n")
+with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[6],alpha = 0.9), border = NA))
 abline(v = phi_samplediff[2], lty = 2, lwd = 2)
 
 par(new=TRUE)
@@ -300,11 +304,12 @@ par(new=TRUE)
 dens <- density(s_samplediff2$psi)
 x1 <- min(which(dens$x >= quantile(s_samplediff2$psi, 0)))
 x2 <- max(which(dens$x <  quantile(s_samplediff2$psi, 1)))
-plot(dens, xlim = c(0,1), ylim = c(0,30), type="n", ann = FALSE, bty = "n", yaxt = "n")
-with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[5],alpha = 0.3), border = NA))
+plot(dens, xlim = c(0,1), ylim = c(0,25), type="n", ann = FALSE, bty = "n", yaxt = "n")
+with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[6],alpha = 0.3), border = NA))
+
+legend("topleft", c("Empirical","Poststr. to Pop II"), col = c(alpha(col.pal[6],alpha = 0.9),alpha(col.pal[6],alpha = 0.3)), lwd = 6, bty="n", cex = 0.9)
 
 mtext("Probability of choosing prosocial option", side = 1,line = 2.9,at=-0.1, outer = F, cex = 0.9)
 
 dev.off()
 
-}

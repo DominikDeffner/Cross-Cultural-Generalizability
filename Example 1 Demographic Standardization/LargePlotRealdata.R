@@ -107,13 +107,13 @@ png("AgeCurvesReal.png", res = 900, height = 10, width = 22, units = "cm")
 
 
 graphics.off()
-png("DemostandBERVAT.png", res = 900, height = 22, width = 16, units = "cm")
+png("DemostandBERVAT.png", res = 900, height = 19, width = 15, units = "cm")
 
 
 
 par(mfrow = c(3,2), 
-    mar = c(3,1,3,2), 
-    oma = c(1,4,2,0.1))
+    mar = c(4,1,2,2), 
+    oma = c(0.1,4,0,0.1))
 
 
 
@@ -124,7 +124,7 @@ mtext("Age class", side = 2, outer = F, line = 0.2, cex = 1)
 
 
 par(mar=pyramid.plot(Pop_Berlin[,1],Pop_Berlin[,2],top.labels=c("", "Berlin (Germany)",""), ppmar=c(2,1,3,1), xlim = c(10,10),labelcex=1, unit = "",show.values=F, labels = labels2, lxcol = col.pal[2], rxcol = col.pal[3],space = 0.2,gap = 0))
-mtext("Share of population per age class and gender [%]", side = 1,line = 4,at = -11, outer = F, cex = 0.9)
+mtext("Share of population per age class and gender [%]", side = 1,line = 4.5,at = -11, outer = F, cex = 0.9)
 
 legend("topleft", c("Male", "Female"), col = c(col.pal[2], col.pal[3]),cex = 1, lty = 1,lwd = 5, bty = "n" )
 
@@ -137,7 +137,7 @@ par(mar=pyramid.plot(Sample_Berlin[,1],Sample_Berlin[,2],top.labels=c("", "","")
 
 
 
-mtext("Number of individuals per age class and gender", side = 1,line = 4,at = -33, outer = F, cex = 0.9)
+mtext("Number of individuals per age class and gender", side = 1,line = 4.5,at = -33, outer = F, cex = 0.9)
 
 
 
@@ -165,6 +165,7 @@ x2 <- max(which(dens$x <  quantile(s_Vanuatu$p_other, 1)))
 plot(dens, xlim = c(0,1), ylim = c(0,15), type="n", ann = FALSE, bty = "n")
 with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[8],alpha = 0.5), border = NA))
 
+legend("topleft", c("Empirical estimate","Poststratified to sample population", "Poststratified to other population"), col = c(alpha(col.pal[1],alpha = 0.5),alpha(col.pal[6],alpha = 0.5),alpha(col.pal[8],alpha = 0.5)), lwd = 6, bty="n", cex = 1)
 
 
 
@@ -181,6 +182,7 @@ x2 <- max(which(dens$x <  quantile(s_Berlin$p_pop, 1)))
 plot(dens, xlim = c(0,1), ylim = c(0,15), type="n", ann = FALSE, bty = "n", yaxt = "n")
 with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[6],alpha = 0.5), border = NA))
 
+
 par(new=TRUE)
 dens <- density(s_Berlin$p_other)
 x1 <- min(which(dens$x >= quantile(s_Berlin$p_other, 0)))  
@@ -191,7 +193,6 @@ with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.p
 
 
 mtext("Probability of choosing prosocial option", side = 1,line = 2.9,at=-0.1, outer = F, cex = 0.9)
-legend("topleft", c("Unadjusted","Adjusted for same pop", "Adjusted for other pop"), col = c(alpha(col.pal[1],alpha = 0.5),alpha(col.pal[6],alpha = 0.5),alpha(col.pal[8],alpha = 0.5)), lwd = 6, bty="n", cex = 1)
 
 
 

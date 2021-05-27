@@ -3,9 +3,11 @@ library(readr)
 library(rethinking)
 library(plotrix)
 
+setwd("~/GitHub/Cross_Cultural_Generalizability")
+
 #Population Distribution of Vanuatu and Berlin
-Pop_Berlin <- read.csv("C:/Users/Dominik/Desktop/Berlin-2020.csv")
-Pop_Vanuatu <- read.csv("C:/Users/Dominik/Desktop/Vanuatu-2017.csv")
+Pop_Berlin <- read.csv("Example 1 Demographic Standardization/Berlin-2020.csv")
+Pop_Vanuatu <- read.csv("Example 1 Demographic Standardization/Vanuatu-2017.csv")
 Pop_Vanuatu <- Pop_Vanuatu[-nrow(Pop_Vanuatu),]
 
 # Creat pyramid plot labels
@@ -24,7 +26,6 @@ Pop_Vanuatu <- (Pop_Vanuatu/sum(Pop_Vanuatu))*100
 
 #Sample Distribution of Vanuatu and Berlin
 #Create demography age pyramids
-setwd("~/GitHub/Cross_Cultural_Generalizability")
 
 data_adult <- read.csv("House_data/Model_1a_1b_1c_data.csv")
 data_adult <- data_adult[,c("SUBJECT_ID","GENDER_1female","fieldid", "AGE_in_years","T1_ad_choice_1yes")]
@@ -144,7 +145,7 @@ parameters {
 model {
   vector[N] p;
 
-  alpha ~ normal(0, 1);
+  alpha ~ normal(0, 3);
 
   eta ~ exponential(2);
   sigma ~ exponential(1);
@@ -216,8 +217,8 @@ generated quantities{
 
 
 library(rstan)
-m_Berlin <- stan( model_code  = m2a_MRP_GP_gender_same , data=d_list_Berlin ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.999, max_treedepth = 13))  
-m_Vanuatu <- stan( model_code  = m2a_MRP_GP_gender_same , data=d_list_Vanuatu ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.999, max_treedepth = 13))  
+m_Berlin <- stan( model_code  = m2a_MRP_GP_gender_same , data=d_list_Berlin ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.99, max_treedepth = 13))  
+m_Vanuatu <- stan( model_code  = m2a_MRP_GP_gender_same , data=d_list_Vanuatu ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.99, max_treedepth = 13))  
 
 
 

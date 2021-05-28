@@ -17,13 +17,13 @@ data_children$T1_choice_1yes <- NULL
 
 
 
-Society <- c("Berlin (GER)","La Plata (ARG)","Phoenix (USA)", "Pune (IND)", "Shuar (ECU)", "Wiichi (ARG)", "Tanna (WUT)", "Hadza (TZA)")
+Society <- c("Berlin (GER)","La Plata (ARG)","Phoenix (USA)", "Pune (IND)", "Shuar (ECU)", "Wichí (ARG)", "Tanna (WUT)", "Hadza (TZA)")
 
 
 
 graphics.off()
-png("Pyramids.png", width = 16,height = 26, units = "cm", res = 900)
-par(mfrow = c(4,2), 
+png("Pyramids.png", width = 22,height = 14, units = "cm", res = 900)
+par(mfrow = c(2,4), 
     mar = c(1,1,1,0), 
     oma = c(3.3,3.4,0,1))
 for (j in 1:8) {
@@ -61,7 +61,7 @@ for (i in 1:MA) {
 
 par(mar=pyramid.plot(a[1,],a[2,],top.labels=c("",Society[j],""),ppmar=c(2,1,3,1), xlim = c(9,9),labelcex=1.2, unit = "",show.values=F, labels = labels, lxcol = "indianred", rxcol = "darkgreen", space = 0,gap = 0))
 
-if (j == 2) legend("topright", c("Male", "Female"), col = c("indianred", "darkgreen"),cex = 1.4, lty = 1,lwd = 5, bty = "n" )
+if (j == 5) legend("topright", c("Male", "Female"), col = c("indianred", "darkgreen"),cex = 1.1, lty = 1,lwd = 8, bty = "n" )
 
 }
 

@@ -137,9 +137,9 @@ parameters {
   vector[2] alpha;
   matrix[2,MA] age_effect;    //Matrix for GP age effects
   
-  real<lower=0> eta;
-  real<lower=0> sigma;
-  real<lower=0, upper=1> rho;
+  real<lower=0> eta[2];
+  real<lower=0> sigma[2];
+  real<lower=0, upper=1> rho[2];
 }
 
 model {
@@ -153,7 +153,7 @@ model {
 
 
   for ( i in 1:2){
-   age_effect[i,] ~ multi_normal_cholesky( rep_vector(0, MA) , GPL(MA, rho, eta, sigma) );
+   age_effect[i,] ~ multi_normal_cholesky( rep_vector(0, MA) , GPL(MA, rho[i], eta[i], sigma[i]) );
   }  
 
   for ( i in 1:N ) {
@@ -230,42 +230,3 @@ m_Vanuatu <- stan( model_code  = m2a_MRP_GP_gender_same , data=d_list_Vanuatu ,i
 
 
 
-
-
-
-
-
-
-
-library(scales)
-#color stuff
-require(RColorBrewer)#load package
-col.pal <- brewer.pal(8, "Dark2") #create a pallette which you loop over for corresponding values
-
-
-graphics.off()
-png("DemostandLarge2.png", res = 900, height = 25, width = 25, units = "cm")
-
-
-par(mfrow = c(3,2), 
-    mar = c(3,1,3,2), 
-    oma = c(1,4,2,0.1))
-# Population 1
-par(mar=pyramid.plot(Pop_Vanuatu[,1],Pop_Vanuatu[,2],top.labels=c("", "Vanuatu",""), ppmar=c(2,1,3,1), xlim = c(10,10),labelcex=1, unit = "",show.values=F, labels = labels1, lxcol = col.pal[2], rxcol = col.pal[3],space = 0.2,gap = 0))
-mtext("Population", side = 2, outer = F, line = 3.5, cex = 1.3)
-mtext("Age class", side = 2, outer = F, line = 0.2, cex = 1)
-
-legend("topright", c("Male", "Female"), col = c(col.pal[2], col.pal[3]),cex = 1, lty = 1,lwd = 5, bty = "n" )
-par(mar=pyramid.plot(Pop_Berlin[,1],Pop_Berlin[,2],top.labels=c("", "Berlin",""), ppmar=c(2,1,3,1), xlim = c(10,10),labelcex=1, unit = "",show.values=F, labels = labels2, lxcol = col.pal[2], rxcol = col.pal[3],space = 0.2,gap = 0))
-mtext("Share of population per age class and gender [%]", side = 1,line = 4,at = -10, outer = F, cex = 0.9)
-
-
-
-par(mar=pyramid.plot(Sample_Vanuatu[,1],Sample_Vanuatu[,2],top.labels=c("", "",""), ppmar=c(2,1,3,1), xlim = c(30,30),labelcex=1, unit = "",show.values=F, labels = labels1, lxcol = col.pal[2], rxcol = col.pal[3],space = 0.2,gap = 0))
-par(mar=pyramid.plot(Sample_Berlin[,1],Sample_Berlin[,2],top.labels=c("", "",""), ppmar=c(2,1,3,1), xlim = c(30,30),labelcex=1, unit = "",show.values=F, labels = labels2, lxcol = col.pal[2], rxcol = col.pal[3],space = 0.2,gap = 0))
-
-
-
-
-
-dev.off()

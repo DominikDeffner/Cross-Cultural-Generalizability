@@ -189,10 +189,12 @@ library(rstan)
 
 m <- list()
 
-for (i in 1:6) {
-  d_list$Ref <- i
-  m <- stan( model_code  = model , data= d_list ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.95, max_treedepth = 15))  
-}
+# for (i in 1:6) {
+#   d_list$Ref <- i
+#   m <- stan( model_code  = model , data= d_list ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.95, max_treedepth = 15))  
+# }
+
+d_list$Ref <- 6
 
 m_empirical <- stan( model_code  = model_basic , data= d_list ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.95, max_treedepth = 15))  
 m_transport <- stan( model_code  = model , data= d_list ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.95, max_treedepth = 15))  
@@ -264,7 +266,7 @@ dev.off()
 
 
 graphics.off()
-png("Transport2.png", res = 1200, height = 12, width = 16, units = "cm")
+png("Transport2.png", res = 900, height = 12, width = 16, units = "cm")
 
 par(mfrow= c(3,2),
     oma=c(3,0,3,0),
@@ -279,7 +281,7 @@ for (i in 1:6) {
   with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[i],alpha = 0.7), border = NA))
   abline(v = 0, lty = 2)
   mtext(Society[i], side = 2, line = -3, cex = 0.7)
-  if (i ==1) legend("topright", c("Empirical estimates", "Transported estimates"), col = c(alpha("black",alpha = 0.7),alpha("black",alpha = 0.2)), cex = 0.7, lwd = 8, lty = 1, bty = "n")
+  if (i ==1) legend("topright", c("Empirical estimates", "Transported to the Wichí"), col = c(alpha("black",alpha = 0.7),alpha("black",alpha = 0.2)), cex = 0.7, lwd = 8, lty = 1, bty = "n")
   par(new = TRUE)
   
   dens <- density(s$transport_p[,i])
@@ -292,7 +294,7 @@ for (i in 1:6) {
 }
 
 mtext("Effect of norm prime on prosocial choices", side = 1,line = 1.5,outer = TRUE, cex = 0.8)
-mtext("'Transport' of causal effect to the Wichí (ARG)", side = 3,line = 1.5,outer = TRUE, cex = 1)
+mtext("'Transport' of causal effects across populations", side = 3,line = 1.5,outer = TRUE, cex = 1)
 
 dev.off()
 

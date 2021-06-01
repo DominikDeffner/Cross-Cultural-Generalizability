@@ -3,7 +3,6 @@
 # The aim here is to simulate and analyze exemplary data sets generated from different processes
 # a) Disparities arise only from real demographic differences among populations (e.g. one is older/more men)
 # b) Disparities arise only from differences in sampling procedure 
-# c) Disparities arise from both processes
 
 library(rethinking)
 library(scales)
@@ -24,24 +23,19 @@ Age_range <- c(1:90)
 
 
 #Create population array [pop, sex, age]
-D <- array(NA,c(2,2,length(Age_range)))
+D_popdiff <- array(NA,c(2,2,length(Age_range)))
 
 X <- 1:100
 
 age_seq <- seq(0, 100, 1)
 
 #Exponential distribution (similar to many growing populations)
-D[1,1, ] <- dexp(age_seq, 0.04)[Age_range]
-D[1,2, ] <- dexp(age_seq, 0.04)[Age_range]
+D_popdiff[1,1, ] <- dexp(age_seq, 0.04)[Age_range]
+D_popdiff[1,2, ] <- dexp(age_seq, 0.04)[Age_range]
 
 #Skewed normal distribution (similar to many shrinking populations)
-D[2,1, ] <- dsn(X, xi = 30, omega = 50, alpha = 1)[Age_range]
-D[2,2, ] <- dsn(X, xi = 30, omega = 50, alpha = 1)[Age_range]
-
- 
- par(mfrow = c(1,2))
- plot(X, dexp(X,0.04), type = "l", xlim = c(0,100), ylab= "Density", xlab = "Age")
- plot(X, dsn(X, xi = 30, omega = 70, alpha = 1), type = "l", xlim = c(0,100), ylab= "Density", xlab = "Age", ylim = c(0,0.01))
+D_popdiff[2,1, ] <- dsn(X, xi = 30, omega = 50, alpha = 1)[Age_range]
+D_popdiff[2,2, ] <- dsn(X, xi = 30, omega = 50, alpha = 1)[Age_range]
 
 
 #Generate data
@@ -50,7 +44,7 @@ d <- data.frame(id = 1:(2*N), soc_id = c(rep(1,N), rep(2,N)), age = NA, gender =
 
 #Simulate ages from above distributions
 for (pop_id in 1:2) {
-  d$age[d$soc_id==pop_id] <- sample(Age_range, N, replace = TRUE, prob = D[pop_id,1,])
+  d$age[d$soc_id==pop_id] <- sample(Age_range, N, replace = TRUE, prob = D_popdiff[pop_id,1,])
 }
 
 #Simulate Genders
@@ -58,62 +52,22 @@ for (pop_id in 1:2) {
 d$gender[d$soc_id==1] <- sample(c(1,2),N, replace = TRUE, prob = c(0.5, 0.5)) 
 d$gender[d$soc_id==2] <- sample(c(1,2),N, replace = TRUE, prob = c(0.5, 0.5)) 
 
+SampleD_popdiff <- array(NA,c(2,2,length(Age_range)))
 
-
-a1 <- matrix(0, 2, length(Age_range))
-for (i in Age_range) {
-     a1[1,which(Age_range == i)] <- length(which(d$age[d$soc_id == 1]==i & d$gender[d$soc_id == 1] == 1))
-     a1[2,which(Age_range == i)] <- length(which(d$age[d$soc_id == 1]==i & d$gender[d$soc_id == 1] == 2))
-}
-a2 <- matrix(0, 2, length(Age_range))
-for (i in Age_range) {
-  a2[1,which(Age_range == i)] <- length(which(d$age[d$soc_id == 2]==i & d$gender[d$soc_id == 2] == 1))
-  a2[2,which(Age_range == i)] <- length(which(d$age[d$soc_id == 2]==i & d$gender[d$soc_id == 2] == 2))
+for (pop_id in 1:2) {
+  for (gender in 1:2) {
+    for (i in Age_range) {
+    SampleD_popdiff[pop_id, gender, i] <- length(which(d$age[d$soc_id == pop_id]==i & d$gender[d$soc_id == pop_id] == gender))
+  }  
+ }
 }
 
 
-par(mfrow = c(2,2), 
-    mar = c(1,1,1,0), 
-    oma = c(3.3,4,0,1))
-labels1 <- matrix("", length(Age_range), 2)
-labels1[seq(5,75,10),1] <- seq(5,75,10)
-labels2 <- matrix("", length(Age_range), 2)
+p_logit_culture <-c(-3, -1.5)
 
-
-par(mar=pyramid.plot(D[1,1, ]*100,D[1,2, ]*100,top.labels=c("", "Society 1",""),ppmar=c(2,1,3,1), xlim = c(3,3),labelcex=1.2, unit = "",show.values=F, labels = labels1, lxcol = "indianred", rxcol = "darkgreen",space = 0,gap = 0))
-labels <- matrix("", length(Age_range), 2)
-legend("topright", c("Male", "Female"), col = c("indianred", "darkgreen"),cex = 1, lty = 1,lwd = 5, bty = "n" )
-
-mtext("Population", side = 2, outer = F, line = 2.5, cex = 1.3)
-mtext("Age class", side = 2, outer = F, line = 0.2, cex = 1)
-par(mar=pyramid.plot(D[2,1, ]*100,D[2,2, ]*100,top.labels=c("", "Society 2",""),ppmar=c(2,1,3,1), xlim = c(3,3),labelcex=1.2, unit = "",show.values=F, labels = labels2, lxcol = "indianred", rxcol = "darkgreen", space = 0,gap = 0))
-mtext("Share of population per age class and gender [%]", side = 1,line = 1.5,at = -3.5, outer = F, cex = 1)
-
-
-par(mar=pyramid.plot(a1[1,],a1[2,],top.labels=c("", "",""),ppmar=c(2,1,3,1), xlim = c(max(c(a1,a2)),max(c(a1,a2))),labelcex=1.2, unit = "",show.values=F, labels = labels1, lxcol = "indianred", rxcol = "darkgreen",space = 0,gap = 0))
-mtext("Sample", side = 2, outer = F, line = 2.5, cex = 1.3)
-mtext("Age class", side = 2, outer = F, line = 0.2, cex = 1)
-par(mar=pyramid.plot(a2[1,],a2[2,],top.labels=c("", "",""),ppmar=c(2,1,3,1), xlim = c(max(c(a1,a2)),max(c(a1,a2))),labelcex=1.2, unit = "",show.values=F, labels = labels2, lxcol = "indianred", rxcol = "darkgreen",space = 0,gap = 0))
-
-mtext("Number of individuals per age class and gender", side = 1,line = 1.5,at = -15, outer = F, cex = 1)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-p_logit_culture <-c(-1, 0)
-
+#Effects of age and gender
 b_age <- 0.04
-b_gender <- 0
+b_gender <- 2
 
 #Generate observations
 stand_age<- c()
@@ -122,17 +76,17 @@ for (i in 1:(2*N)) stand_age[i] <- (d$age[i] - mean(d$age[d$soc_id==1]))/sd(d$ag
 for(i in 1:(2*N)) d$outcome[i] <- rbinom(1, 1, inv_logit(p_logit_culture[d$soc_id[i]] + b_age*d$age[i] + b_gender*(d$gender[i]-1)) )
 
 
-phi <- c()
+phi_popdiff <- c()
 for (pop in 1:2) {
   expect_pos = 0
   total = 0
   for (a in 1:2){
     for (b in 1:max(Age_range)){
-      total = total + D[pop,a,b];
-      expect_pos = expect_pos + D[pop,a,b] * inv_logit(p_logit_culture[pop] + b_gender*(a-1) + b_age*b);
+      total = total + D_popdiff[pop,a,b];
+      expect_pos = expect_pos + D_popdiff[pop,a,b] * inv_logit(p_logit_culture[pop] + b_gender*(a-1) + b_age*b);
     }
   }  
-  phi[pop] = expect_pos / total
+  phi_popdiff[pop] = expect_pos / total
 }
 
 
@@ -141,14 +95,14 @@ for (pop in 1:2) {
 
 
 
-d1 <- list(N = N,
+d1_popdiff <- list(N = N,
            MA = max(Age_range),
            gender = d$gender[d$soc_id==1], 
            age = d$age[d$soc_id==1],
            outcome = d$outcome[d$soc_id==1]
 )
 
-d2 <- list(N = N,
+d2_popdiff <- list(N = N,
            MA = max(Age_range),
            gender = d$gender[d$soc_id==2], 
            age = d$age[d$soc_id==2],
@@ -156,26 +110,14 @@ d2 <- list(N = N,
 )
 
 
-d1$P_same <-a1
-d1$P_other <-  a2
 
 
-d2$P_same <- a2
-
-d2$P_other <-  a1
-
+d1_popdiff$P_same  <- SampleD_popdiff[1,,]
+d1_popdiff$P_other <-  SampleD_popdiff[2,,]
 
 
-
-
-
-
-
-
-
-
-
-
+d2_popdiff$P_same  <- SampleD_popdiff[2,,]
+d2_popdiff$P_other <-  SampleD_popdiff[1,,]
 
 
 
@@ -218,15 +160,15 @@ parameters {
   vector[2] alpha;
   matrix[2,MA] age_effect;    //Matrix for GP age effects
   
-  real<lower=0> eta;
-  real<lower=0> sigma;
-  real<lower=0, upper=1> rho;
+  real<lower=0> eta[2];
+  real<lower=0> sigma[2];
+  real<lower=0, upper=1> rho[2];
 }
 
 model {
   vector[N] p;
 
-  alpha ~ normal(0, 1);
+  alpha ~ normal(0, 2);
 
   eta ~ exponential(2);
   sigma ~ exponential(1);
@@ -234,7 +176,7 @@ model {
 
 
   for ( i in 1:2){
-   age_effect[i,] ~ multi_normal_cholesky( rep_vector(0, MA) , GPL(MA, rho, eta, sigma) );
+   age_effect[i,] ~ multi_normal_cholesky( rep_vector(0, MA) , GPL(MA, rho[i], eta[i], sigma[i]) );
   }  
 
   for ( i in 1:N ) {
@@ -282,148 +224,12 @@ generated quantities{
 
 
 
-m11 <- stan( model_code  = m2a_MRP_GP_gender_same , data=d1 ,iter = 2000, cores = 1, seed=1, chains=1, control = list(adapt_delta=0.95, max_treedepth = 13))  
+m_popdiff1 <- stan( model_code  = m2a_MRP_GP_gender_same , data=d1_popdiff ,iter = 4000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.95, max_treedepth = 13))  
 
-m12 <- stan( model_code  = m2a_MRP_GP_gender_same , data=d2 ,iter = 2000, cores = 1, seed=1, chains=1, control = list(adapt_delta=0.95, max_treedepth = 13))  
+m_popdiff2 <- stan( model_code  = m2a_MRP_GP_gender_same , data=d2_popdiff ,iter = 4000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.95, max_treedepth = 13))  
 
-m11samp <- extract.samples(m11)
-m12samp <- extract.samples(m12)
-
-
-#Age Curves
-{
-par(mfrow = c(2,2))
-samp <- extract.samples(m11)
-samp_pred_p <- apply(samp$pred_p_m,2,quantile,probs=c(0.05,0.5,0.95))
-Lower <- samp_pred_p[1,]
-Median <- samp_pred_p[2,]
-Higher <- samp_pred_p[3,]
-Observed <- ifelse(c(1:d2$MA) %in% unique(d1$age),"Observed Age","Unobserved Age")
-plot(NA, type = "l", xlim = c(0,d2$MA), ylim = c(0,1), xlab = "Age", ylab = "p", lwd = 2, lty = 2, main= "Male")
-points(Median, col = ifelse(Observed == "Observed Age", "black", "blue"), pch = 16)
-segments(x0 = 1:d2$MA, y0 = Lower, x1=  1:d2$MA, y1 = Higher, lwd = 2, col = ifelse(Observed == "Observed Age", "black", "blue"))
-legend("topright", c("Observed", "Unobserved"), col = c("black", "blue"), lwd = 4, lty=1, bty="n")
-samp_pred_p <- apply(samp$pred_p_f,2,quantile,probs=c(0.05,0.5,0.95))
-Lower <- samp_pred_p[1,]
-Median <- samp_pred_p[2,]
-Higher <- samp_pred_p[3,]
-Observed <- ifelse(c(1:d1$MA) %in% unique(d1$age),"Observed Age","Unobserved Age")
-
-plot(NA, type = "l", xlim = c(0,d2$MA), ylim = c(0,1), xlab = "Age", ylab = "p", lwd = 2, lty = 2, main= "Female")
-points(Median, col = ifelse(Observed == "Observed Age", "black", "blue"), pch = 16)
-segments(x0 = 1:d2$MA, y0 = Lower, x1=  1:d2$MA, y1 = Higher, lwd = 2, col = ifelse(Observed == "Observed Age", "black", "blue"))
-
-samp <- extract.samples(m12)
-samp_pred_p <- apply(samp$pred_p_m,2,quantile,probs=c(0.05,0.5,0.95))
-Lower <- samp_pred_p[1,]
-Median <- samp_pred_p[2,]
-Higher <- samp_pred_p[3,]
-Observed <- ifelse(c(1:d2$MA) %in% unique(d1$age),"Observed Age","Unobserved Age")
-
-plot(NA, type = "l", xlim = c(0,d2$MA), ylim = c(0,1), xlab = "Age", ylab = "p", lwd = 2, lty = 2, main= "Male")
-points(Median, col = ifelse(Observed == "Observed Age", "black", "blue"), pch = 16)
-segments(x0 = 1:d2$MA, y0 = Lower, x1=  1:d2$MA, y1 = Higher, lwd = 2, col = ifelse(Observed == "Observed Age", "black", "blue"))
-legend("topright", c("Observed", "Unobserved"), col = c("black", "blue"), lwd = 4, lty=1, bty="n")
-
-
-samp_pred_p <- apply(samp$pred_p_f,2,quantile,probs=c(0.05,0.5,0.95))
-Lower <- samp_pred_p[1,]
-Median <- samp_pred_p[2,]
-Higher <- samp_pred_p[3,]
-Observed <- ifelse(c(1:d1$MA) %in% unique(d1$age),"Observed Age","Unobserved Age")
-
-plot(NA, type = "l", xlim = c(0,d2$MA), ylim = c(0,1), xlab = "Age", ylab = "p", lwd = 2, lty = 2, main= "Female")
-points(Median, col = ifelse(Observed == "Observed Age", "black", "blue"), pch = 16)
-segments(x0 = 1:d2$MA, y0 = Lower, x1=  1:d2$MA, y1 = Higher, lwd = 2, col = ifelse(Observed == "Observed Age", "black", "blue"))
-}
-
-
-library(scales)
-#color stuff
-require(RColorBrewer)#load package
-col.pal <- brewer.pal(8, "Dark2") #create a pallette which you loop over for corresponding values
-seqoverall <- seq
-
-graphics.off()
-png("Demostand2704.png", res = 600, height = 20, width = 16, units = "cm")
-
-
-par(mfrow = c(3,2), 
-    mar = c(3,1,3,2), 
-    oma = c(1,4,0,0.1))
-labels1 <- matrix("", length(Age_range), 2)
-labels1[seq(5,75,10),1] <- seq(5,75,10)
-labels2 <- matrix("", length(Age_range), 2)
-
-
-par(mar=pyramid.plot(D[1,1, ]*100,D[1,2, ]*100,top.labels=c("", "Population I",""),ppmar=c(2,1,3,1), xlim = c(5,5),labelcex=1.2, unit = "",show.values=F, labels = labels1, lxcol = col.pal[2], rxcol = col.pal[3],space = 0,gap = 0))
-labels <- matrix("", length(Age_range), 2)
-legend("topright", c("Male", "Female"), col = c(col.pal[2], col.pal[3]),cex = 1, lty = 1,lwd = 5, bty = "n" )
-
-mtext("Population", side = 2, outer = F, line = 3.5, cex = 1.3)
-mtext("Age class", side = 2, outer = F, line = 0.2, cex = 1)
-par(mar=pyramid.plot(D[2,1, ]*100,D[2,2, ]*100,top.labels=c("", "Population II",""),ppmar=c(2,1,3,1), xlim = c(3,3),labelcex=1.2, unit = "",show.values=F, labels = labels2,  lxcol = col.pal[2], rxcol = col.pal[3], space = 0,gap = 0))
-mtext("Share of population per age class and gender [%]", side = 1,line = 4,at = -4, outer = F, cex = 0.9)
-
-
-par(mar=pyramid.plot(a1[1,],a1[2,],top.labels=c("", "",""),ppmar=c(2,1,3,1), xlim = c(max(c(a1,a2)+3),max(c(a1,a2))+3),labelcex=1.2, unit = "",show.values=F, labels = labels1,  lxcol = col.pal[2], rxcol = col.pal[3],space = 0,gap = 0))
-mtext("Sample", side = 2, outer = F, line = 3.5, cex = 1.3)
-mtext("Age class", side = 2, outer = F, line = 0.2, cex = 1)
-par(mar=pyramid.plot(a2[1,],a2[2,],top.labels=c("", "",""),ppmar=c(2,1,3,1), xlim = c(max(c(a1,a2)+3),max(c(a1,a2))+3),labelcex=1.2, unit = "",show.values=F, labels = labels2,  lxcol = col.pal[2], rxcol = col.pal[3],space = 0,gap = 0))
-
-mtext("Number of individuals per age class and gender", side = 1,line = 4,at = -22, outer = F, cex = 0.9)
-
-
-
-dens <- density(m11samp$phi)
-x1 <- min(which(dens$x >= quantile(m11samp$phi, 0)))  
-x2 <- max(which(dens$x <  quantile(m11samp$phi, 1)))
-plot(dens, xlim = c(0,1), ylim = c(0,30), type="n", ann = FALSE, bty = "n")
-with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[4],alpha = 0.9), border = NA))
-abline(v = phi[1], lty = 2, lwd = 2)
-par(new=TRUE)
-dens <- density(m11samp$psi)
-x1 <- min(which(dens$x >= quantile(m11samp$psi, 0)))  
-x2 <- max(which(dens$x <  quantile(m11samp$psi, 1)))
-plot(dens, xlim = c(0,1), ylim = c(0,30), type="n", ann = FALSE, bty = "n")
-with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[4],alpha = 0.3), border = NA))
-mtext("Density", side = 2,line = 3, outer = F, cex = 1)
-
-
-
-dens <- density(m12samp$phi)
-x1 <- min(which(dens$x >= quantile(m12samp$phi, 0)))  
-x2 <- max(which(dens$x <  quantile(m12samp$phi, 1)))
-plot(dens, xlim = c(0,1), ylim = c(0,30), type="n", ann = FALSE, bty = "n", yaxt = "n")
-with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[5],alpha = 0.9), border = NA))
-abline(v = phi[2], lty = 2, lwd = 2)
-
-par(new=TRUE)
-
-dens <- density(m12samp$psi)
-x1 <- min(which(dens$x >= quantile(m12samp$psi, 0)))
-x2 <- max(which(dens$x <  quantile(m12samp$psi, 1)))
-plot(dens, xlim = c(0,1), ylim = c(0,30), type="n", ann = FALSE, bty = "n")
-with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[5],alpha = 0.3), border = NA))
-
-mtext("Probability of choosing prosocial option", side = 1,line = 2.9,at=-0.1, outer = F, cex = 0.9)
-legend("topleft", title = "Population", c("I","I (poststratified)", "II","II (poststratified)"), col = c(alpha(col.pal[4],alpha = 0.9),alpha(col.pal[4],alpha = 0.3),alpha(col.pal[5],alpha = 0.9),alpha(col.pal[5],alpha = 0.3)), lwd = 6, bty="n", cex = 1)
-
-
-dev.off()
-
-
-
-
-
-
-
-
-
-
-
-
-
+s_popdiff1 <- extract.samples(m_popdiff1)
+s_popdiff2 <- extract.samples(m_popdiff2)
 
 
 
@@ -439,19 +245,19 @@ dev.off()
 
 
 #Create population array [pop, sex, age]
-D <- array(NA,c(2,2,length(Age_range)))
+D_samplediff <- array(NA,c(2,2,length(Age_range)))
 
 X <- 1:100
 
 age_seq <- seq(0, 100, 1)
 
 #Exponential distribution (similar to many growing populations)
-D[1,1, ] <- dexp(age_seq, 0.04)[Age_range]
-D[1,2, ] <- dexp(age_seq, 0.04)[Age_range]
+D_samplediff[1,1, ] <- dexp(age_seq, 0.04)[Age_range]
+D_samplediff[1,2, ] <- dexp(age_seq, 0.04)[Age_range]
 
 #Skewed normal distribution (similar to many shrinking populations)
-D[2,1, ] <- dexp(age_seq, 0.04)[Age_range]
-D[2,2, ] <-dexp(age_seq, 0.04)[Age_range]
+D_samplediff[2,1, ] <- dexp(age_seq, 0.04)[Age_range]
+D_samplediff[2,2, ] <-dexp(age_seq, 0.04)[Age_range]
 
 
 
@@ -461,53 +267,24 @@ d <- data.frame(id = 1:(2*N), soc_id = c(rep(1,N), rep(2,N)), age = NA, gender =
 
 #Simulate ages from above distributions
 for (pop_id in 1:2) {
-  d$age[d$soc_id==pop_id] <- sample(Age_range, N, replace = TRUE, prob = D[pop_id,1,])
+  d$age[d$soc_id==pop_id] <- sample(Age_range, N, replace = TRUE, prob = D_samplediff[pop_id,1,])
 }
 
 #Simulate Genders
 
-d$gender[d$soc_id==1] <- sample(c(1,2),N, replace = TRUE, prob = c(0.4, 0.6)) 
-d$gender[d$soc_id==2] <- sample(c(1,2),N, replace = TRUE, prob = c(0.7, 0.3)) 
+d$gender[d$soc_id==1] <- sample(c(1,2),N, replace = TRUE, prob = c(0.3, 0.7)) 
+d$gender[d$soc_id==2] <- sample(c(1,2),N, replace = TRUE, prob = c(0.8, 0.2)) 
 
 
+SampleD_samplediff <- array(NA,c(2,2,length(Age_range)))
 
-a1 <- matrix(0, 2, length(Age_range))
-for (i in Age_range) {
-  a1[1,which(Age_range == i)] <- length(which(d$age[d$soc_id == 1]==i & d$gender[d$soc_id == 1] == 1))
-  a1[2,which(Age_range == i)] <- length(which(d$age[d$soc_id == 1]==i & d$gender[d$soc_id == 1] == 2))
+for (pop_id in 1:2) {
+  for (gender in 1:2) {
+    for (i in Age_range) {
+      SampleD_samplediff[pop_id, gender, i] <- length(which(d$age[d$soc_id == pop_id]==i & d$gender[d$soc_id == pop_id] == gender))
+    }  
+  }
 }
-a2 <- matrix(0, 2, length(Age_range))
-for (i in Age_range) {
-  a2[1,which(Age_range == i)] <- length(which(d$age[d$soc_id == 2]==i & d$gender[d$soc_id == 2] == 1))
-  a2[2,which(Age_range == i)] <- length(which(d$age[d$soc_id == 2]==i & d$gender[d$soc_id == 2] == 2))
-}
-
-
-par(mfrow = c(2,2), 
-    mar = c(1,1,1,0), 
-    oma = c(3.3,4,0,1))
-labels1 <- matrix("", length(Age_range), 2)
-labels1[seq(5,75,10),1] <- seq(5,75,10)
-labels2 <- matrix("", length(Age_range), 2)
-
-
-par(mar=pyramid.plot(D[1,1, ]*100,D[1,2, ]*100,top.labels=c("", "Society 1",""),ppmar=c(2,1,3,1), xlim = c(3,3),labelcex=1.2, unit = "",show.values=F, labels = labels1, lxcol = "indianred", rxcol = "darkgreen",space = 0,gap = 0))
-labels <- matrix("", length(Age_range), 2)
-legend("topright", c("Male", "Female"), col = c("indianred", "darkgreen"),cex = 1, lty = 1,lwd = 5, bty = "n" )
-
-mtext("Population", side = 2, outer = F, line = 2.5, cex = 1.3)
-mtext("Age class", side = 2, outer = F, line = 0.2, cex = 1)
-par(mar=pyramid.plot(D[2,1, ]*100,D[2,2, ]*100,top.labels=c("", "Society 2",""),ppmar=c(2,1,3,1), xlim = c(3,3),labelcex=1.2, unit = "",show.values=F, labels = labels2, lxcol = "indianred", rxcol = "darkgreen", space = 0,gap = 0))
-mtext("Share of population per age class and gender [%]", side = 1,line = 1.5,at = -3.5, outer = F, cex = 1)
-
-
-par(mar=pyramid.plot(a1[1,],a1[2,],top.labels=c("", "",""),ppmar=c(2,1,3,1), xlim = c(max(c(a1,a2)),max(c(a1,a2))),labelcex=1.2, unit = "",show.values=F, labels = labels1, lxcol = "indianred", rxcol = "darkgreen",space = 0,gap = 0))
-mtext("Sample", side = 2, outer = F, line = 2.5, cex = 1.3)
-mtext("Age class", side = 2, outer = F, line = 0.2, cex = 1)
-par(mar=pyramid.plot(a2[1,],a2[2,],top.labels=c("", "",""),ppmar=c(2,1,3,1), xlim = c(max(c(a1,a2)),max(c(a1,a2))),labelcex=1.2, unit = "",show.values=F, labels = labels2, lxcol = "indianred", rxcol = "darkgreen",space = 0,gap = 0))
-
-mtext("Number of individuals per age class and gender", side = 1,line = 1.5,at = -15, outer = F, cex = 1)
-
 
 
 
@@ -515,27 +292,27 @@ mtext("Number of individuals per age class and gender", side = 1,line = 1.5,at =
 #Generate observations
 
 #Effect of "culture" that's independent of demography
-p_logit_culture <-c(-3, -1)
+p_logit_culture <-c(-3, -1.5)
 
 #Effects of age and gender
-b_age <- 0.02
-b_gender <- 2.5
+b_age <- 0.04
+b_gender <- 2
 
 
 for(i in 1:(2*N)) d$outcome[i] <- rbinom(1, 1, inv_logit(p_logit_culture[d$soc_id[i]] + b_age*d$age[i] + b_gender*(d$gender[i]-1)) )
 
 #Compute expected prosociality in both populations
-phi <- c()
+phi_samplediff <- c()
 for (pop in 1:2) {
   expect_pos = 0
   total = 0
   for (a in 1:2){
     for (b in 1:max(Age_range)){
-      total = total + D[pop,a,b];
-      expect_pos = expect_pos + D[pop,a,b] * inv_logit(p_logit_culture[pop] + b_gender*(a-1) + b_age*b);
+      total = total + D_samplediff[pop,a,b];
+      expect_pos = expect_pos + D_samplediff[pop,a,b] * inv_logit(p_logit_culture[pop] + b_gender*(a-1) + b_age*b);
     }
   }  
-  phi[pop] = expect_pos / total
+  phi_samplediff[pop] = expect_pos / total
 }
 
 
@@ -544,14 +321,14 @@ for (pop in 1:2) {
 
 
 # Prepare lists for stan
-d1 <- list(N = N,
+d1_samplediff <- list(N = N,
            MA = max(Age_range),
            gender = d$gender[d$soc_id==1], 
            age = d$age[d$soc_id==1],
            outcome = d$outcome[d$soc_id==1]
 )
 
-d2 <- list(N = N,
+d2_samplediff <- list(N = N,
            MA = max(Age_range),
            gender = d$gender[d$soc_id==2], 
            age = d$age[d$soc_id==2],
@@ -560,76 +337,42 @@ d2 <- list(N = N,
 
 
 #
-d1$P_same <-a1
-d1$P_other <-  D[1,,] * 1000000000
-mode(d1$P_other) <- 'integer'
+d1_samplediff$P_same <- SampleD_samplediff[1,,]
+d1_samplediff$P_other <-  D_samplediff[1,,] * 1e9
+mode(d1_samplediff$P_other) <- 'integer'
 
-d2$P_same <- a2
 
-d2$P_other <-  D[2,,] * 1000000000
-
-mode(d2$P_other) <- 'integer'
-
+d2_samplediff$P_same <- SampleD_samplediff[2,,]
+d2_samplediff$P_other <-  D_samplediff[2,,] * 1e9
+mode(d2_samplediff$P_other) <- 'integer'
 
 
 
 
 
 
-m11 <- stan( model_code  = m2a_MRP_GP_gender_same , data=d1 ,iter = 2000, cores = 1, seed=1, chains=1, control = list(adapt_delta=0.95, max_treedepth = 13))  
 
-m12 <- stan( model_code  = m2a_MRP_GP_gender_same , data=d2 ,iter = 2000, cores = 1, seed=1, chains=1, control = list(adapt_delta=0.95, max_treedepth = 13))  
+m_samplediff1 <- stan( model_code  = m2a_MRP_GP_gender_same , data=d1_samplediff ,iter = 4000, cores = 4, seed=4, chains=1, control = list(adapt_delta=0.95, max_treedepth = 13))  
 
-m11samp <- extract.samples(m11)
-m12samp <- extract.samples(m12)
+m_samplediff2 <- stan( model_code  = m2a_MRP_GP_gender_same , data=d2_samplediff ,iter = 4000, cores = 4, seed=4, chains=1, control = list(adapt_delta=0.95, max_treedepth = 13))  
+
+s_samplediff1 <- extract.samples(m_samplediff1)
+s_samplediff2 <- extract.samples(m_samplediff2)
 
 
-#Age Curves
-{
-  par(mfrow = c(2,2))
-  samp <- extract.samples(m11)
-  samp_pred_p <- apply(samp$pred_p_m,2,quantile,probs=c(0.05,0.5,0.95))
-  Lower <- samp_pred_p[1,]
-  Median <- samp_pred_p[2,]
-  Higher <- samp_pred_p[3,]
-  Observed <- ifelse(c(1:d2$MA) %in% unique(d1$age),"Observed Age","Unobserved Age")
-  plot(NA, type = "l", xlim = c(0,d2$MA), ylim = c(0,1), xlab = "Age", ylab = "p", lwd = 2, lty = 2, main= "Male")
-  points(Median, col = ifelse(Observed == "Observed Age", "black", "blue"), pch = 16)
-  segments(x0 = 1:d2$MA, y0 = Lower, x1=  1:d2$MA, y1 = Higher, lwd = 2, col = ifelse(Observed == "Observed Age", "black", "blue"))
-  legend("topright", c("Observed", "Unobserved"), col = c("black", "blue"), lwd = 4, lty=1, bty="n")
-  samp_pred_p <- apply(samp$pred_p_f,2,quantile,probs=c(0.05,0.5,0.95))
-  Lower <- samp_pred_p[1,]
-  Median <- samp_pred_p[2,]
-  Higher <- samp_pred_p[3,]
-  Observed <- ifelse(c(1:d1$MA) %in% unique(d1$age),"Observed Age","Unobserved Age")
-  
-  plot(NA, type = "l", xlim = c(0,d2$MA), ylim = c(0,1), xlab = "Age", ylab = "p", lwd = 2, lty = 2, main= "Female")
-  points(Median, col = ifelse(Observed == "Observed Age", "black", "blue"), pch = 16)
-  segments(x0 = 1:d2$MA, y0 = Lower, x1=  1:d2$MA, y1 = Higher, lwd = 2, col = ifelse(Observed == "Observed Age", "black", "blue"))
-  
-  samp <- extract.samples(m12)
-  samp_pred_p <- apply(samp$pred_p_m,2,quantile,probs=c(0.05,0.5,0.95))
-  Lower <- samp_pred_p[1,]
-  Median <- samp_pred_p[2,]
-  Higher <- samp_pred_p[3,]
-  Observed <- ifelse(c(1:d2$MA) %in% unique(d1$age),"Observed Age","Unobserved Age")
-  
-  plot(NA, type = "l", xlim = c(0,d2$MA), ylim = c(0,1), xlab = "Age", ylab = "p", lwd = 2, lty = 2, main= "Male")
-  points(Median, col = ifelse(Observed == "Observed Age", "black", "blue"), pch = 16)
-  segments(x0 = 1:d2$MA, y0 = Lower, x1=  1:d2$MA, y1 = Higher, lwd = 2, col = ifelse(Observed == "Observed Age", "black", "blue"))
-  legend("topright", c("Observed", "Unobserved"), col = c("black", "blue"), lwd = 4, lty=1, bty="n")
-  
-  
-  samp_pred_p <- apply(samp$pred_p_f,2,quantile,probs=c(0.05,0.5,0.95))
-  Lower <- samp_pred_p[1,]
-  Median <- samp_pred_p[2,]
-  Higher <- samp_pred_p[3,]
-  Observed <- ifelse(c(1:d1$MA) %in% unique(d1$age),"Observed Age","Unobserved Age")
-  
-  plot(NA, type = "l", xlim = c(0,d2$MA), ylim = c(0,1), xlab = "Age", ylab = "p", lwd = 2, lty = 2, main= "Female")
-  points(Median, col = ifelse(Observed == "Observed Age", "black", "blue"), pch = 16)
-  segments(x0 = 1:d2$MA, y0 = Lower, x1=  1:d2$MA, y1 = Higher, lwd = 2, col = ifelse(Observed == "Observed Age", "black", "blue"))
-}
+
+
+######
+####
+###
+##
+# Plotting Code
+##
+###
+####
+####
+
+
 
 
 library(scales)
@@ -638,70 +381,155 @@ require(RColorBrewer)#load package
 col.pal <- brewer.pal(8, "Dark2") #create a pallette which you loop over for corresponding values
 seqoverall <- seq
 
+
 graphics.off()
-png("DemostandSampDiff.png", res = 600, height = 20, width = 16, units = "cm")
-
-
-par(mfrow = c(3,2), 
-    mar = c(3,1,3,2), 
-    oma = c(1,4,0,0.1))
-labels1 <- matrix("", length(Age_range), 2)
-labels1[seq(5,75,10),1] <- seq(5,75,10)
-labels2 <- matrix("", length(Age_range), 2)
-
-
-par(mar=pyramid.plot(D[1,1, ]*100,D[1,2, ]*100,top.labels=c("", "Population I",""),ppmar=c(2,1,3,1), xlim = c(5,5),labelcex=1.2, unit = "",show.values=F, labels = labels1, lxcol = col.pal[2], rxcol = col.pal[3],space = 0,gap = 0))
-labels <- matrix("", length(Age_range), 2)
-legend("topright", c("Male", "Female"), col = c(col.pal[2], col.pal[3]),cex = 1, lty = 1,lwd = 5, bty = "n" )
-
-mtext("Population", side = 2, outer = F, line = 3.5, cex = 1.3)
-mtext("Age class", side = 2, outer = F, line = 0.2, cex = 1)
-par(mar=pyramid.plot(D[2,1, ]*100,D[2,2, ]*100,top.labels=c("", "Population II",""),ppmar=c(2,1,3,1), xlim = c(5,5),labelcex=1.2, unit = "",show.values=F, labels = labels2,  lxcol = col.pal[2], rxcol = col.pal[3], space = 0,gap = 0))
-mtext("Share of population per age class and gender [%]", side = 1,line = 4,at = -5, outer = F, cex = 0.9)
-
-
-par(mar=pyramid.plot(a1[1,],a1[2,],top.labels=c("", "",""),ppmar=c(2,1,3,1), xlim = c(max(c(a1,a2)+3),max(c(a1,a2))+3),labelcex=1.2, unit = "",show.values=F, labels = labels1,  lxcol = col.pal[2], rxcol = col.pal[3],space = 0,gap = 0))
-mtext("Sample", side = 2, outer = F, line = 3.5, cex = 1.3)
-mtext("Age class", side = 2, outer = F, line = 0.2, cex = 1)
-par(mar=pyramid.plot(a2[1,],a2[2,],top.labels=c("", "",""),ppmar=c(2,1,3,1), xlim = c(max(c(a1,a2)+3),max(c(a1,a2))+3),labelcex=1.2, unit = "",show.values=F, labels = labels2,  lxcol = col.pal[2], rxcol = col.pal[3],space = 0,gap = 0))
-
-mtext("Number of individuals per age class and gender", side = 1,line = 4,at = -22, outer = F, cex = 0.9)
+png("AgeCurves.png", res = 900, height = 16, width = 24, units = "cm")
 
 
 
-dens <- density(m11samp$phi)
-x1 <- min(which(dens$x >= quantile(m11samp$phi, 0)))  
-x2 <- max(which(dens$x <  quantile(m11samp$phi, 1)))
-plot(dens, xlim = c(0,1), ylim = c(0,30), type="n", ann = FALSE, bty = "n")
-with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[4],alpha = 0.9), border = NA))
-abline(v = phi[1], lty = 2, lwd = 2)
-par(new=TRUE)
-dens <- density(m11samp$psi)
-x1 <- min(which(dens$x >= quantile(m11samp$psi, 0)))  
-x2 <- max(which(dens$x <  quantile(m11samp$psi, 1)))
-plot(dens, xlim = c(0,1), ylim = c(0,30), type="n", ann = FALSE, bty = "n")
-with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[4],alpha = 0.3), border = NA))
-mtext("Density", side = 2,line = 3, outer = F, cex = 1)
+#Age Curves
+
+par(mfrow = c(2,2),
+    mar = c(1,2,1.2,0.5), 
+    oma = c(2.2,5.1,1,0))
+
+###
+##
+# Population Differences
+##
+###
+samp <- extract.samples(m_popdiff1)
+samp_pred_p <- apply(samp$pred_p_m,2,quantile,probs=c(0.05,0.5,0.95))
+Lower <- samp_pred_p[1,]
+Median <- samp_pred_p[2,]
+Higher <- samp_pred_p[3,]
+
+Observed_m <- ifelse(c(1:d1_popdiff$MA) %in% unique(d1_popdiff$age[d1_popdiff$gender==1]),"Observed Age","Unobserved Age")
+Observed_f <- ifelse(c(1:d1_popdiff$MA) %in% unique(d1_popdiff$age[d1_popdiff$gender==2]),"Observed Age","Unobserved Age")
+
+plot(NA, type = "l", xlim = c(0,max(Age_range)), ylim = c(0,1), xlab = "", ylab = "", lwd = 2, lty = 2, main= "Population I")
+points(Median, col = ifelse(Observed_m == "Observed Age", alpha(col.pal[2],alpha = 1), alpha(col.pal[2],alpha = 0.3)), pch = 16)
+segments(x0 = 1:d1_popdiff$MA, y0 = Lower, x1=  1:d1_popdiff$MA, y1 = Higher, lwd = 2, col = ifelse(Observed_m == "Observed Age", alpha(col.pal[2],alpha = 1), alpha(col.pal[2],alpha = 0.3)))
+
+legend("topleft", c("Male","Female"), col = c(alpha(col.pal[2],alpha = 1), alpha(col.pal[3],alpha = 1)), pch = c(16,17), lwd = 2, lty=1, bty="n", cex = 1.2)
+
+
+samp_pred_p <- apply(samp$pred_p_f,2,quantile,probs=c(0.05,0.5,0.95))
+Lower <- samp_pred_p[1,]
+Median <- samp_pred_p[2,]
+Higher <- samp_pred_p[3,]
+
+par(new = TRUE)
+plot(NA, type = "l", xlim = c(0,max(Age_range)), ylim = c(0,1), xlab = "", ylab = "", lwd = 2, lty = 2, main= "")
+points(Median, col = ifelse(Observed_f == "Observed Age", alpha(col.pal[3],alpha = 1), alpha(col.pal[3],alpha = 0.3)), pch = 17)
+segments(x0 = 1:d1_popdiff$MA, y0 = Lower, x1=  1:d1_popdiff$MA, y1 = Higher, lwd = 2, col = ifelse(Observed_f == "Observed Age", alpha(col.pal[3],alpha = 1), alpha(col.pal[3],alpha = 0.3)))
+
+
+mtext("Population Differences", side = 2, outer = FALSE, line = 6, cex = 1.2)
+
+
+samp <- extract.samples(m_popdiff2)
+samp_pred_p <- apply(samp$pred_p_m,2,quantile,probs=c(0.05,0.5,0.95))
+Lower <- samp_pred_p[1,]
+Median <- samp_pred_p[2,]
+Higher <- samp_pred_p[3,]
+
+Observed_m <- ifelse(c(1:d2_popdiff$MA) %in% unique(d2_popdiff$age[d2_popdiff$gender==1]),"Observed Age","Unobserved Age")
+Observed_f <- ifelse(c(1:d2_popdiff$MA) %in% unique(d2_popdiff$age[d2_popdiff$gender==2]),"Observed Age","Unobserved Age")
+
+plot(NA, type = "l", xlim = c(0,max(Age_range)), ylim = c(0,1), xlab = "", ylab = "", lwd = 2, lty = 2, main= "Population II")
+points(Median, col = ifelse(Observed_m == "Observed Age", alpha(col.pal[2],alpha = 1), alpha(col.pal[2],alpha = 0.3)), pch = 16)
+segments(x0 = 1:d2_popdiff$MA, y0 = Lower, x1=  1:d2_popdiff$MA, y1 = Higher, lwd = 2, col = ifelse(Observed_m == "Observed Age", alpha(col.pal[2],alpha = 1), alpha(col.pal[2],alpha = 0.3)))
+
+
+samp_pred_p <- apply(samp$pred_p_f,2,quantile,probs=c(0.05,0.5,0.95))
+Lower <- samp_pred_p[1,]
+Median <- samp_pred_p[2,]
+Higher <- samp_pred_p[3,]
+
+par(new = TRUE)
+plot(NA, type = "l", xlim = c(0,max(Age_range)), ylim = c(0,1), xlab = "", ylab = "", lwd = 2, lty = 2, main= "")
+points(Median, col = ifelse(Observed_f == "Observed Age", alpha(col.pal[3],alpha = 1), alpha(col.pal[3],alpha = 0.3)), pch = 17)
+segments(x0 = 1:d2_popdiff$MA, y0 = Lower, x1=  1:d2_popdiff$MA, y1 = Higher, lwd = 2, col = ifelse(Observed_f == "Observed Age", alpha(col.pal[3],alpha = 1), alpha(col.pal[3],alpha = 0.3)))
 
 
 
-dens <- density(m12samp$phi)
-x1 <- min(which(dens$x >= quantile(m12samp$phi, 0)))  
-x2 <- max(which(dens$x <  quantile(m12samp$phi, 1)))
-plot(dens, xlim = c(0,1), ylim = c(0,30), type="n", ann = FALSE, bty = "n", yaxt = "n")
-with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[5],alpha = 0.9), border = NA))
-abline(v = phi[2], lty = 2, lwd = 2)
 
-par(new=TRUE)
 
-dens <- density(m12samp$psi)
-x1 <- min(which(dens$x >= quantile(m12samp$psi, 0)))
-x2 <- max(which(dens$x <  quantile(m12samp$psi, 1)))
-plot(dens, xlim = c(0,1), ylim = c(0,30), type="n", ann = FALSE, bty = "n", yaxt = "n")
-with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[5],alpha = 0.3), border = NA))
+###
+##
+# Sampling Differences
+##
+###
 
-mtext("Probability of choosing prosocial option", side = 1,line = 2.9,at=-0.1, outer = F, cex = 0.9)
-legend("topleft", title = "Population", c("I","I (poststratified)", "II","II (poststratified)"), col = c(alpha(col.pal[4],alpha = 0.9),alpha(col.pal[4],alpha = 0.3),alpha(col.pal[5],alpha = 0.9),alpha(col.pal[5],alpha = 0.3)), lwd = 6, bty="n", cex = 1)
+samp <- extract.samples(m_samplediff1)
+samp_pred_p <- apply(samp$pred_p_m,2,quantile,probs=c(0.05,0.5,0.95))
+Lower <- samp_pred_p[1,]
+Median <- samp_pred_p[2,]
+Higher <- samp_pred_p[3,]
+
+Observed_m <- ifelse(c(1:d1_samplediff$MA) %in% unique(d1_samplediff$age[d1_samplediff$gender==1]),"Observed Age","Unobserved Age")
+Observed_f <- ifelse(c(1:d1_samplediff$MA) %in% unique(d1_samplediff$age[d1_samplediff$gender==2]),"Observed Age","Unobserved Age")
+
+plot(NA, type = "l", xlim = c(0,max(Age_range)), ylim = c(0,1), xlab = "", ylab = "", lwd = 2, lty = 2, main= "")
+points(Median, col = ifelse(Observed_m == "Observed Age", alpha(col.pal[2],alpha = 1), alpha(col.pal[2],alpha = 0.3)), pch = 16)
+segments(x0 = 1:d1_samplediff$MA, y0 = Lower, x1=  1:d1_samplediff$MA, y1 = Higher, lwd = 2, col = ifelse(Observed_m == "Observed Age", alpha(col.pal[2],alpha = 1), alpha(col.pal[2],alpha = 0.3)))
+
+
+mtext("Sampling Differences", side = 2, outer = FALSE,line = 6, cex = 1.2)
+
+
+samp_pred_p <- apply(samp$pred_p_f,2,quantile,probs=c(0.05,0.5,0.95))
+Lower <- samp_pred_p[1,]
+Median <- samp_pred_p[2,]
+Higher <- samp_pred_p[3,]
+
+par(new = TRUE)
+plot(NA, type = "l", xlim = c(0,max(Age_range)), ylim = c(0,1), xlab = "", ylab = "", lwd = 2, lty = 2, main= "")
+points(Median, col = ifelse(Observed_f == "Observed Age", alpha(col.pal[3],alpha = 1), alpha(col.pal[3],alpha = 0.3)), pch = 17)
+segments(x0 = 1:d1_samplediff$MA, y0 = Lower, x1=  1:d1_samplediff$MA, y1 = Higher, lwd = 2, col = ifelse(Observed_f == "Observed Age", alpha(col.pal[3],alpha = 1), alpha(col.pal[3],alpha = 0.3)))
+
+
+
+
+
+samp <- extract.samples(m_samplediff2)
+samp_pred_p <- apply(samp$pred_p_m,2,quantile,probs=c(0.05,0.5,0.95))
+Lower <- samp_pred_p[1,]
+Median <- samp_pred_p[2,]
+Higher <- samp_pred_p[3,]
+
+Observed_m <- ifelse(c(1:d2_samplediff$MA) %in% unique(d2_samplediff$age[d2_samplediff$gender==1]),"Observed Age","Unobserved Age")
+Observed_f <- ifelse(c(1:d2_samplediff$MA) %in% unique(d2_samplediff$age[d2_samplediff$gender==2]),"Observed Age","Unobserved Age")
+
+plot(NA, type = "l", xlim = c(0,max(Age_range)), ylim = c(0,1), xlab = "", ylab = "", lwd = 2, lty = 2, main= "")
+points(Median, col = ifelse(Observed_m == "Observed Age", alpha(col.pal[2],alpha = 1), alpha(col.pal[2],alpha = 0.3)), pch = 16)
+segments(x0 = 1:d2_samplediff$MA, y0 = Lower, x1=  1:d2_samplediff$MA, y1 = Higher, lwd = 2, col = ifelse(Observed_m == "Observed Age", alpha(col.pal[2],alpha = 1), alpha(col.pal[2],alpha = 0.3)))
+
+
+
+
+
+samp_pred_p <- apply(samp$pred_p_f,2,quantile,probs=c(0.05,0.5,0.95))
+Lower <- samp_pred_p[1,]
+Median <- samp_pred_p[2,]
+Higher <- samp_pred_p[3,]
+
+par(new = TRUE)
+plot(NA, type = "l", xlim = c(0,max(Age_range)), ylim = c(0,1), xlab = "", ylab = "", lwd = 2, lty = 2, main= "")
+points(Median, col = ifelse(Observed_f == "Observed Age", alpha(col.pal[3],alpha = 1), alpha(col.pal[3],alpha = 0.3)), pch = 17)
+segments(x0 = 1:d2_samplediff$MA, y0 = Lower, x1=  1:d2_samplediff$MA, y1 = Higher, lwd = 2, col = ifelse(Observed_f == "Observed Age", alpha(col.pal[3],alpha = 1), alpha(col.pal[3],alpha = 0.3)))
+
+
+
+
+
+
+
+
+mtext("Age", side = 1, outer = TRUE, line = 1, cex = 1.2)
+mtext("Probability of choosing prosocial option", side = 2, line = 1.2,outer = TRUE)
+
 
 
 dev.off()
@@ -711,6 +539,140 @@ dev.off()
 
 
 
+graphics.off()
+png("DemostandLarge.png", res = 900, height = 22, width = 25, units = "cm")
+
+
+
+par(mfrow = c(3,4), 
+    mar = c(3,1,3,2), 
+    oma = c(1,4,2,0.1))
+labels1 <- matrix("", length(Age_range), 2)
+labels1[seq(5,75,10),1] <- seq(5,75,10)
+labels2 <- matrix("", length(Age_range), 2)
+
+# Population 1
+par(mar=pyramid.plot(D_popdiff[1,1, ]*100,D_popdiff[1,2, ]*100,top.labels=c("", "Population I",""),ppmar=c(2,1,3,1), xlim = c(5,5),labelcex=1.2, unit = "",show.values=F, labels = labels1, lxcol = col.pal[2], rxcol = col.pal[3],space = 0,gap = 0))
+labels <- matrix("", length(Age_range), 2)
+legend("topright", c("Male", "Female"), col = c(col.pal[2], col.pal[3]),cex = 1, lty = 1,lwd = 5, bty = "n" )
+
+mtext("Population", side = 2, outer = F, line = 3.5, cex = 1.3)
+mtext("Age class", side = 2, outer = F, line = 0.2, cex = 1)
+par(mar=pyramid.plot(D_popdiff[2,1, ]*100,D_popdiff[2,2, ]*100,top.labels=c("", "Population II",""),ppmar=c(2,1,3,1), xlim = c(3,3),labelcex=1.2, unit = "",show.values=F, labels = labels2,  lxcol = col.pal[2], rxcol = col.pal[3], space = 0,gap = 0))
+mtext("Share of population per age class and gender [%]", side = 1,line = 4,at = -3, outer = F, cex = 0.9)
+mtext("Population Differences", side = 3,line = 3,at = -3, outer = F, cex = 2)
+
+# Population 2
+par(mar=pyramid.plot(D_samplediff[1,1, ]*100,D_samplediff[1,2, ]*100,top.labels=c("", "Population I",""),ppmar=c(2,1,3,1), xlim = c(5,5),labelcex=1.2, unit = "",show.values=F, labels = labels2, lxcol = col.pal[2], rxcol = col.pal[3],space = 0,gap = 0))
+labels <- matrix("", length(Age_range), 2)
+par(mar=pyramid.plot(D_samplediff[2,1, ]*100,D_samplediff[2,2, ]*100,top.labels=c("", "Population II",""),ppmar=c(2,1,3,1), xlim = c(5,5),labelcex=1.2, unit = "",show.values=F, labels = labels2,  lxcol = col.pal[2], rxcol = col.pal[3], space = 0,gap = 0))
+
+mtext("Share of population per age class and gender [%]", side = 1,line = 4,at = -5, outer = F, cex = 0.9)
+mtext("Sampling Differences", side = 3,line = 3,at = -5, outer = F, cex = 2)
+
+
+
+#Samples 1
+
+par(mar=pyramid.plot(SampleD_popdiff[1,1,],SampleD_popdiff[1,2,],top.labels=c("", "",""),ppmar=c(2,1,3,1), xlim = c(max(SampleD_popdiff[1,,]+3),max(SampleD_popdiff[1,,]+3)),labelcex=1.2, unit = "",show.values=F, labels = labels1,  lxcol = col.pal[2], rxcol = col.pal[3],space = 0,gap = 0))
+mtext("Sample", side = 2, outer = F, line = 3.5, cex = 1.3)
+mtext("Age class", side = 2, outer = F, line = 0.2, cex = 1)
+par(mar=pyramid.plot(SampleD_popdiff[2,1,],SampleD_popdiff[2,2,],top.labels=c("", "",""),ppmar=c(2,1,3,1), xlim = c(max(SampleD_popdiff[1,,]+3),max(SampleD_popdiff[1,,]+3)),labelcex=1.2, unit = "",show.values=F, labels = labels2,  lxcol = col.pal[2], rxcol = col.pal[3],space = 0,gap = 0))
+
+mtext("Number of individuals per age class and gender", side = 1,line = 4,at = -22, outer = F, cex = 0.9)
+
+#Samples 2
+
+par(mar=pyramid.plot(SampleD_samplediff[1,1,],SampleD_samplediff[1,2,],top.labels=c("", "",""),ppmar=c(2,1,3,1), xlim = c(max(SampleD_samplediff[2,,]+3),max(SampleD_samplediff[2,,]+3)),labelcex=1.2, unit = "",show.values=F, labels = labels2,  lxcol = col.pal[2], rxcol = col.pal[3],space = 0,gap = 0))
+par(mar=pyramid.plot(SampleD_samplediff[2,1,],SampleD_samplediff[2,2,],top.labels=c("", "",""),ppmar=c(2,1,3,1), xlim = c(max(SampleD_samplediff[2,,]+3),max(SampleD_samplediff[2,,]+3)),labelcex=1.2, unit = "",show.values=F, labels = labels2,  lxcol = col.pal[2], rxcol = col.pal[3],space = 0,gap = 0))
+
+mtext("Number of individuals per age class and gender", side = 1,line = 4,at = -22, outer = F, cex = 0.9)
+
+
+#Densities 1
+
+dens <- density(s_popdiff1$phi)
+x1 <- min(which(dens$x >= quantile(s_popdiff1$phi, 0)))  
+x2 <- max(which(dens$x <  quantile(s_popdiff1$phi, 1)))
+plot(dens, xlim = c(0,1), ylim = c(0,25), type="n", ann = FALSE, bty = "n")
+with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[1],alpha = 0.9), border = NA))
+abline(v = phi_popdiff[1], lty = 2, lwd = 2)
+par(new=TRUE)
+dens <- density(s_popdiff1$psi)
+x1 <- min(which(dens$x >= quantile(s_popdiff1$psi, 0)))  
+x2 <- max(which(dens$x <  quantile(s_popdiff1$psi, 1)))
+plot(dens, xlim = c(0,1), ylim = c(0,25), type="n", ann = FALSE, bty = "n")
+with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[1],alpha = 0.3), border = NA))
+mtext("Density", side = 2,line = 3, outer = F, cex = 1)
+
+legend("topright", c("Empirical","Poststr. to Pop II"), col = c(alpha(col.pal[1],alpha = 0.9),alpha(col.pal[1],alpha = 0.3)), lwd = 6, bty="n", cex = 0.9)
+
+
+dens <- density(s_popdiff2$phi)
+x1 <- min(which(dens$x >= quantile(s_popdiff2$phi, 0)))  
+x2 <- max(which(dens$x <  quantile(s_popdiff2$phi, 1)))
+plot(dens, xlim = c(0,1), ylim = c(0,25), type="n", ann = FALSE, bty = "n", yaxt = "n")
+with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[4],alpha = 0.9), border = NA))
+abline(v = phi_popdiff[2], lty = 2, lwd = 2)
+
+par(new=TRUE)
+
+dens <- density(s_popdiff2$psi)
+x1 <- min(which(dens$x >= quantile(s_popdiff2$psi, 0)))
+x2 <- max(which(dens$x <  quantile(s_popdiff2$psi, 1)))
+plot(dens, xlim = c(0,1), ylim = c(0,25), type="n", ann = FALSE, bty = "n", yaxt = "n")
+with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[4],alpha = 0.3), border = NA))
+
+mtext("Probability of choosing prosocial option", side = 1,line = 2.9,at=-0.1, outer = F, cex = 0.9)
+
+legend("topleft", c("Empirical","Poststr. to Pop I"), col = c(alpha(col.pal[4],alpha = 0.9),alpha(col.pal[4],alpha = 0.3)), lwd = 6, bty="n", cex =  0.9)
+
+
+
+
+
+
+
+#Densities 2
+
+
+dens <- density(s_samplediff1$phi)
+x1 <- min(which(dens$x >= quantile(s_samplediff1$phi, 0)))  
+x2 <- max(which(dens$x <  quantile(s_samplediff1$phi, 1)))
+plot(dens, xlim = c(0,1), ylim = c(0,25), type="n", yaxt = "n",ann = FALSE, bty = "n")
+with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[5],alpha = 0.9), border = NA))
+abline(v = phi_samplediff[1], lty = 2, lwd = 2)
+par(new=TRUE)
+dens <- density(s_samplediff1$psi)
+x1 <- min(which(dens$x >= quantile(s_samplediff1$psi, 0)))  
+x2 <- max(which(dens$x <  quantile(s_samplediff1$psi, 1)))
+plot(dens, xlim = c(0,1), ylim = c(0,25), type="n", ann = FALSE, bty = "n", yaxt = "n")
+with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[5],alpha = 0.3), border = NA))
+
+legend("topright", c("Empirical","Poststr. to Pop I"), col = c(alpha(col.pal[5],alpha = 0.9),alpha(col.pal[5],alpha = 0.3)), lwd = 6, bty="n", cex = 0.9)
+
+
+
+dens <- density(s_samplediff2$phi)
+x1 <- min(which(dens$x >= quantile(s_samplediff2$phi, 0)))  
+x2 <- max(which(dens$x <  quantile(s_samplediff2$phi, 1)))
+plot(dens, xlim = c(0,1), ylim = c(0,25), type="n", ann = FALSE, bty = "n", yaxt = "n")
+with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[6],alpha = 0.9), border = NA))
+abline(v = phi_samplediff[2], lty = 2, lwd = 2)
+
+par(new=TRUE)
+
+dens <- density(s_samplediff2$psi)
+x1 <- min(which(dens$x >= quantile(s_samplediff2$psi, 0)))
+x2 <- max(which(dens$x <  quantile(s_samplediff2$psi, 1)))
+plot(dens, xlim = c(0,1), ylim = c(0,25), type="n", ann = FALSE, bty = "n", yaxt = "n")
+with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[6],alpha = 0.3), border = NA))
+
+legend("topleft", c("Empirical","Poststr. to Pop II"), col = c(alpha(col.pal[6],alpha = 0.9),alpha(col.pal[6],alpha = 0.3)), lwd = 6, bty="n", cex = 0.9)
+
+mtext("Probability of choosing prosocial option", side = 1,line = 2.9,at=-0.1, outer = F, cex = 0.9)
+
+dev.off()
 
 
 

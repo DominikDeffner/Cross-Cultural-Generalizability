@@ -12,7 +12,8 @@ Pop_Vanuatu <- Pop_Vanuatu[-nrow(Pop_Vanuatu),]
 
 # Creat pyramid plot labels
 labels1 <- matrix("", 20, 2)
-labels1[,1] <- Pop_Vanuatu[,1]
+labels1[,1] <- c("1-5", "","11-15","","21-25","","31-35","","41-45","",
+                 "51-55","","61-65","","71-75","","81-85","","91-95","")
 labels2 <- matrix("", 20, 2)
 
 Pop_Berlin <- as.matrix(Pop_Berlin[,c(2,3)])
@@ -100,7 +101,7 @@ d_list_Vanuatu <- list(N = nrow(d_Vanuatu),
 
 {
   
-  m2a_MRP_GP_gender_same <- "
+  m_House <- "
 functions{
   matrix GPL(int K, real C, real D, real S){
    matrix[K,K] Rho;                       
@@ -217,8 +218,8 @@ generated quantities{
 
 
 library(rstan)
-m_Berlin <- stan( model_code  = m2a_MRP_GP_gender_same , data=d_list_Berlin ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.99, max_treedepth = 13))  
-m_Vanuatu <- stan( model_code  = m2a_MRP_GP_gender_same , data=d_list_Vanuatu ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.99, max_treedepth = 13))  
+m_Berlin <- stan( model_code  = m_House , data=d_list_Berlin ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.99, max_treedepth = 13))  
+m_Vanuatu <- stan( model_code  = m_House , data=d_list_Vanuatu ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.99, max_treedepth = 13))  
 
 
 
@@ -361,7 +362,7 @@ mtext("Age class", side = 2, outer = F, line = 0.2, cex = 1)
 par(mar=pyramid.plot(Pop_Berlin[,1],Pop_Berlin[,2],top.labels=c("", "Berlin (Germany)",""), ppmar=c(2,1,3,1), xlim = c(10,10),labelcex=1, unit = "",show.values=F, labels = labels2, lxcol = col.pal[2], rxcol = col.pal[3],space = 0.2,gap = 0))
 mtext("Share of population per age class and gender [%]", side = 1,line = 4.5,at = -11, outer = F, cex = 0.9)
 
-legend("topleft", c("Male", "Female"), col = c(col.pal[2], col.pal[3]),cex = 1, lty = 1,lwd = 5, bty = "n" )
+legend("topleft", c("Male", "Female"), col = c(col.pal[2], col.pal[3]),cex = 1.1, lty = 1,lwd = 8, bty = "n" )
 
 
 par(mar=pyramid.plot(Sample_Vanuatu[,1],Sample_Vanuatu[,2],top.labels=c("", "",""), ppmar=c(2,1,3,1), xlim = c(30,30),labelcex=1, unit = "",show.values=F, labels = labels1, lxcol = col.pal[2], rxcol = col.pal[3],space = 0.2,gap = 0))

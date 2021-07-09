@@ -17,7 +17,7 @@ data_children$T1_choice_1yes <- NULL
 
 
 
-Society <- c("Berlin (GER)","La Plata (ARG)","Phoenix (USA)", "Pune (IND)", "Shuar (ECU)", "Wichí (ARG)", "Tanna (WUT)", "Hadza (TZA)")
+Society <- c("Berlin (GER)","La Plata (ARG)","Phoenix (USA)", "Pune (IND)", "Shuar (ECU)", "Wichí (ARG)", "Tanna (VUT)", "Hadza (TZA)")
 
 
 
@@ -43,7 +43,7 @@ d  <- list(outcome = data_comb$choice,
 )
 
 labels <- matrix("", MA, 2)
-if (j %in% c(1,3,5,7)){
+if (j %in% c(1,5)){
 labels[5,1] <- 5
 labels[15,1] <- 15
 labels[25,1] <- 25
@@ -68,6 +68,9 @@ if (j == 5) legend("topright", c("Male", "Female"), col = c("indianred", "darkgr
 mtext("Number of individuals per age and gender", side = 1,line = 2, outer = TRUE, cex = 1.3)
 mtext("Age class", side = 2, outer = TRUE, line = 2, cex = 1.3)
 dev.off()
+
+
+
 
 
 

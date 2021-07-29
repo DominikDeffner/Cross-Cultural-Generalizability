@@ -7,7 +7,7 @@ setwd("~/GitHub/Cross_Cultural_Generalizability")
 
 #Population Distribution of Vanuatu and Berlin
 Pop_Berlin <- read.csv("Example 1 Demographic Standardization/Berlin-2020.csv")
-Pop_Vanuatu <- read.csv("Example 1 Demographic Standardization/Vanuatu-2017.csv")
+Pop_Vanuatu <- read.csv("Example 1 Demographic Standardization/Vanuatu-2019.csv")
 Pop_Vanuatu <- Pop_Vanuatu[-nrow(Pop_Vanuatu),]
 
 # Creat pyramid plot labels

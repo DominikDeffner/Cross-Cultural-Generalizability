@@ -1,26 +1,32 @@
 
-# House data for transport example
 
+#Generalizing experimental results: Transportability of Causal Effects
+#Real data example based on House et al., 2020
+#The script prepares the data, runs the transport analysis and creates plot in Fig.6 in the manuscript
 
+#Load some packages and set working directory to main folder
 library(readr)
 library(rethinking)
 library(plotrix)
-
+library(scales)
+library(RColorBrewer)
 setwd("~/GitHub/Cross_Cultural_Generalizability")
 
+#Load the data from House et al., 2020
 data <- read.csv("House_data/Model_6a_6b_6c_6d_data.csv")
 
+#Create new variable for experimental condition, round ages and recode gender such that 1 = male and 2 = female
 data$condition <- sapply(1:nrow(data), function(x) which(c(data$CONDITION_1_1yes[x],data$CONDITION_2_1yes[x],data$CONDITION_3_1yes[x]) == 1 ))
-
 data <- data[,c("SUBJECT_ID","GENDER_1female","fieldid","AGE_in_years","condition","T1_choice_1yes")]
 data$choice <- data$T1_choice_1yes
 data$T1_choice_1yes <- NULL
 data$age <- round(data$AGE_in_years)
 data$gender <- data$GENDER_1female + 1
-# Exclude data from "both ok"
+
+#Exclude data from "both ok", we focus on comparison between "Generous" and "Selfish" conditions
 data <- subset(data, data$condition != 3)
 
-
+#Create matrix with demography of study samples
 Demo <- matrix(0, 6, 12)
 for (j in sort(unique(data$fieldid))) {
   for (i in 4:15) {
@@ -30,114 +36,25 @@ for (j in sort(unique(data$fieldid))) {
 
 
 
-#Prepare for stan
-
-d_list <- list(N = nrow(data), 
-               N_pop = length(unique(data$fieldid)),
-               MA = 12,
-               pop_id = data$fieldid,
-               age = data$age - 3,
-               condition = data$condition-1,
-               outcome = data$choice, 
-               gender = data$gender,
-               Demo = Demo,
-               Ref = 6)
-
+#Prepare data list as input for Stan 
+d_list <- list(N = nrow(data),                         #Number of unique choices/participants    
+               N_pop = length(unique(data$fieldid)),   #Number of field sites
+               MA = 12,                                #Maximum age (recoded, so below)
+               pop_id = data$fieldid,                  #Numerical field id (1=Berlin, 2=La Plata, 3=Phoenix, 4=Pune, 5=Shuar, 6=Wiichi)
+               age = data$age - 3,                     #We recode age which ranges from 4-15 in the data to 1-12 to make indexing easier
+               condition = data$condition-1,           #Dummy code conditions
+               outcome = data$choice,                  #Dictator game choice
+               gender = data$gender,                   #Gender: 1 = male and 2 = female
+               Demo = Demo,                            #Demography of 6 samples
+               Ref = 6)                                #This is the target population for the transport 
 
 
-model <- "
-functions{
-  matrix GPL(int K, real C, real D, real S){
-   matrix[K,K] Rho;                       
-   real KR;                               
-   KR = K;                             
+#Now we define the stan model code
+#The first model ("model_basic") is a simple fixed effects model that provides unbiased or "empirical" estimates of the causal effect in each population
+# As the causal effect does not directly correspond to any model parameters it is computed from the model parameters in the generated quantities section
 
-   for(i in 1:(K-1)){
-   for(j in (i+1):K){  
-    Rho[i,j] = C * exp(-D * ( (j-i)^2 / KR^2) );           
-    Rho[j,i] = Rho[i,j];                       
-    }}
-
-   for (i in 1:K){
-    Rho[i,i] = 1;                               
-    }
-
-   return S*cholesky_decompose(Rho);
-   }
-}
-
-data {
-  int N;
-  int N_pop;
-  int MA;
-  int age[N];
-  int pop_id[N];
-  int condition[N];
-  int outcome[N];
-  int gender[N];
-  int Demo[N_pop, MA];
-  int Ref;
-  }
-
-parameters {
-  real alpha[N_pop];
-  real b_prime[N_pop];
-  
-  matrix[N_pop, MA] age_effect;    //Vector for GP age effects
-  
-  real<lower=0> eta[N_pop];
-  real<lower=0> sigma[N_pop];
-  real<lower=0, upper=1> rho[N_pop];
-}
-
-model {
-  vector[N] p;
-
-  alpha ~ normal(0, 1);
-  b_prime ~ normal(0, 3);
-  eta ~ exponential(2);
-  sigma ~ exponential(1);
-  rho ~ beta(10, 1);
-
- for (h in 1:N_pop){
-    age_effect[h,] ~ multi_normal_cholesky( rep_vector(0, MA) , GPL(MA, rho[h], eta[h], sigma[h]) );
- }
-    
-
-  for ( i in 1:N ) {
-   p[i] = alpha[pop_id[i]] + (b_prime[pop_id[i]] + age_effect[pop_id[i],age[i]]) * condition[i];
-  }
-
- outcome ~ binomial_logit(1, p);
-}
-
-
-generated quantities{
-
-real empirical_p[N_pop];
-real transport_p[N_pop];
-
- for (h in 1:N_pop){
-   real empirical_total = 0;
-   real transport_total = 0;
-
-    for ( i in 1:MA){
-      empirical_total+= Demo[h,i] * (inv_logit(alpha[h]) - inv_logit(alpha[h] + (b_prime[h] + age_effect[h,i])) );
-      transport_total+= Demo[Ref,i] * (inv_logit(alpha[h]) - inv_logit(alpha[h] + (b_prime[h] + age_effect[h,i])) );
-    }
-    empirical_p[h] = empirical_total / sum(Demo[h,]);
-
-    transport_p[h] = transport_total / sum(Demo[Ref,]);
- }
-
-
-
-}
-
-
-"
-
-
+#The second model ("model_transport") uses Gaussian processes to compute age-specific causal effects for each population and uses these strata-specific effects
+#to transport effects to any arbitrary target population (given by variable "Ref", which per default is set to 6 corresponding to the Wiichi)
 
 model_basic <- "
 
@@ -175,17 +92,38 @@ model {
 generated quantities{
 
 real empirical_p[N_pop];
+
  for (h in 1:N_pop){
-      empirical_p[h] =  inv_logit(alpha[h]) - inv_logit(alpha[h] + b_prime[h]);
+   empirical_p[h] =  inv_logit(alpha[h]) - inv_logit(alpha[h] + b_prime[h]);
  }
  
 }
  
 "
 
+model_transport <- "
 
+// Define function for Gaussian process
 
-model_test <- "
+functions{
+  matrix GPL(int K, real C, real D, real S){
+   matrix[K,K] Rho;                       
+   real KR;                               
+   KR = K;                             
+
+   for(i in 1:(K-1)){
+   for(j in (i+1):K){  
+    Rho[i,j] = C * exp(-D * ( (j-i)^2 / KR^2) );           
+    Rho[j,i] = Rho[i,j];                       
+    }}
+
+   for (i in 1:K){
+    Rho[i,i] = 1;                               
+    }
+
+   return S*cholesky_decompose(Rho);
+   }
+}
 
 data {
   int N;
@@ -203,78 +141,78 @@ data {
 parameters {
   real alpha[N_pop];
   real b_prime[N_pop];
-  real b_age[N_pop];
-  real b_prime_age[N_pop];
-
+  matrix[N_pop, MA] age_effect;    //Vector to hold GP age effects
+  
+  //Here we define the Control parameters for the Gaussian processes; they determine how covariance changes with increasing distance in age
+  real<lower=0> eta[N_pop];
+  real<lower=0> sigma[N_pop];
+  real<lower=0, upper=1> rho[N_pop];
 }
 
 model {
   vector[N] p;
 
-  alpha ~ normal(0, 3);
+  alpha ~ normal(0, 1);
   b_prime ~ normal(0, 3);
-  b_age ~ normal(0, 3);
-  b_prime_age ~ normal(0, 3);
-
+  eta ~ exponential(2);
+  sigma ~ exponential(1);
+  rho ~ beta(10, 1);
+ 
+  //We compute age-specific offsets for each population
+  for (h in 1:N_pop){
+    age_effect[h,] ~ multi_normal_cholesky( rep_vector(0, MA) , GPL(MA, rho[h], eta[h], sigma[h]) );
+  }
+    
+  //This is the linear model: Choice probabilities are composed of (site-specific) intercept and age-specific effect of norm prime condition  
   for ( i in 1:N ) {
-   p[i] = alpha[pop_id[i]] + b_prime[pop_id[i]] * condition[i] + b_age[pop_id[i]]*age[i] + b_prime_age[pop_id[i]]* condition[i]*age[i] ;
+   p[i] = alpha[pop_id[i]] + (b_prime[pop_id[i]] + age_effect[pop_id[i],age[i]]) * condition[i];
   }
 
  outcome ~ binomial_logit(1, p);
 }
 
+//We use the generated quantities section to compute causal effect and adjust it for age-structure of target population
+
 generated quantities{
 
-real empirical_p[N_pop];
+real transport_p[N_pop];
+
  for (h in 1:N_pop){
-      empirical_p[h] =  inv_logit(alpha[h]) - inv_logit(alpha[h] + b_prime[h]);
+ 
+   real total = 0;
+
+    for ( i in 1:MA){
+      total+= Demo[Ref,i] * (inv_logit(alpha[h]) - inv_logit(alpha[h] + (b_prime[h] + age_effect[h,i])) );
+    }
+    
+   transport_p[h] = total / sum(Demo[Ref,]);
  }
  
 }
- 
+
 "
 
 
-m_test<- stan( model_code  = model_test , data= d_list ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.9, max_treedepth = 15))  
+
+#Pass code to Rstan and run models
+m_empirical <- stan( model_code  = model_basic , data= d_list ,iter = 5000, cores = 4, chains=4, control = list(adapt_delta=0.99, max_treedepth = 15))  
+m_transport <- stan( model_code  = model_transport , data= d_list ,iter = 5000, cores = 4,chains=4, control = list(adapt_delta=0.99, max_treedepth = 15))  
 
 
-s <- extract.samples(m_test)
-
-curve(mean(s$alpha[,i]) + mean(s$b_prime[,i] ) )
-
-
-library(rstan)
-
-m <- list()
-
-# for (i in 1:6) {
-#   d_list$Ref <- i
-#   m <- stan( model_code  = model , data= d_list ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.95, max_treedepth = 15))  
-# }
-
-d_list$Ref <- 6
-
-m_empirical <- stan( model_code  = model_basic , data= d_list ,iter = 1000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.9, max_treedepth = 15))  
-m_transport <- stan( model_code  = model , data= d_list ,iter = 1000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.9, max_treedepth = 15))  
-
-
+#Extract samples from the posterior
 s_basic <- extract.samples(m_empirical)
 s <- extract.samples(m_transport)
 
 
-library(scales)
-#color stuff
-require(RColorBrewer)#load package
-col.pal <- brewer.pal(8, "Dark2") #create a pallette which you loop over for corresponding values
-seqoverall <- seq
+#Code for Fig.6 in the manuscript
 
+col.pal <- brewer.pal(8, "Dark2") #create a palette which you loop over for corresponding values
+seqoverall <- seq
 Society <- c("Berlin (GER)","La Plata (ARG)","Phoenix (USA)", "Pune (IND)", "Shuar (ECU)", "Wichí (ARG)")
 
-
-
-
-graphics.off()
-png("Transport.png", res = 900, height = 12, width = 16, units = "cm")
+#Uncomment to save plot as png file in working directory
+#graphics.off()
+#png("Transport.png", res = 900, height = 12, width = 16, units = "cm")
 
 par(mfrow= c(3,2),
     oma=c(3,0,3,0),
@@ -304,7 +242,7 @@ for (i in 1:6) {
 mtext("Effect of norm prime on prosocial choices", side = 1,line = 1.5,outer = TRUE, cex = 0.8)
 mtext("'Transport' of causal effects across populations", side = 3,line = 1.5,outer = TRUE, cex = 1)
 
-dev.off()
+#dev.off()
 
 
 

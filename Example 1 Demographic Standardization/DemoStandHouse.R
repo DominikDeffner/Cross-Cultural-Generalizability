@@ -1,4 +1,3 @@
-
 #Generalizing description: Cross-cultural comparisons and demographic standardization
 #Real data example based on House et al., 2020
 #The script prepares the data, runs the multilevel regression with poststratification analysis and creates plot in Fig.4 in the manuscript
@@ -9,7 +8,7 @@ library(rethinking)
 library(plotrix)
 library(scales)
 require(RColorBrewer)
-setwd("~/GitHub/Cross_Cultural_Generalizability")
+setwd("~/GitHub/Cross-Cultural-Generalizability")
 
 #Population distributions (age and gender) of Vanuatu and Berlin
 Pop_Berlin <- read.csv("Example 1 Demographic Standardization/Berlin-2020.csv")
@@ -58,10 +57,10 @@ Sample_Berlin <- matrix(0, 20, 2)
 Sample_Vanuatu <- matrix(0, 20, 2)
 
 for (i in 1:20) {
- for (g in 1:2) {
-  Sample_Berlin[i,g] <- length(which(d_Berlin$AGE_binned==i & d_Berlin$gender == g))
-  Sample_Vanuatu[i,g] <- length(which(d_Vanuatu$AGE_binned==i & d_Vanuatu$gender == g))
- }
+  for (g in 1:2) {
+    Sample_Berlin[i,g] <- length(which(d_Berlin$AGE_binned==i & d_Berlin$gender == g))
+    Sample_Vanuatu[i,g] <- length(which(d_Vanuatu$AGE_binned==i & d_Vanuatu$gender == g))
+  }
 }
 
 
@@ -75,19 +74,34 @@ d_list_Berlin <- list(N = nrow(d_Berlin),              #Sample size
                       age = d_Berlin$AGE_binned,       #Binned ages
                       outcome = d_Berlin$choice,       #Choices in dictator game
                       gender = d_Berlin$gender,        #Gender
-                      P_empirical = t(Sample_Berlin),  #Sample demography of Berlin
                       P_Pop = t(Pop_Berlin_raw),       #Population demography of Berlin
                       P_other = t(Pop_Vanuatu_raw))    #Population demography of Vanuatu
 
 
 d_list_Vanuatu <- list(N = nrow(d_Vanuatu),            #Sample size
-                      MA = 20,                         #Number of age categories  
-                      age = d_Vanuatu$AGE_binned,      #Binned ages
-                      outcome = d_Vanuatu$choice,      #Choices in dictator game
-                      gender = d_Vanuatu$gender,       #Gender
-                      P_empirical = t(Sample_Vanuatu), #Sample demography of Tanna, Vanuatu
-                      P_Pop = t(Pop_Vanuatu_raw),      #Population demography of Vanuatu
-                      P_other = t(Pop_Berlin_raw))     #Population demography of Berlin
+                       MA = 20,                         #Number of age categories  
+                       age = d_Vanuatu$AGE_binned,      #Binned ages
+                       outcome = d_Vanuatu$choice,      #Choices in dictator game
+                       gender = d_Vanuatu$gender,       #Gender
+                       P_Pop = t(Pop_Vanuatu_raw),      #Population demography of Vanuatu
+                       P_other = t(Pop_Berlin_raw))     #Population demography of Berlin
+
+
+#Here, we code the stan model for a simple Bernoulli model. This is used for "empirical" estimates
+
+
+Basic_House <- "
+data {
+  int N;
+  int outcome[N];
+}
+parameters {
+  real p;            
+}
+model {
+ outcome ~ bernoulli_logit(p);
+}
+"
 
 
 #Here, we code the stan model for our Gaussian Process Multilevel Regression with Poststratification
@@ -97,23 +111,22 @@ MRP_House <- "
 //Function for Gaussian Process kernel
 
 functions{
+
   matrix GPL(int K, real C, real D, real S){
    matrix[K,K] Rho;                       
    real KR;                               
    KR = K;                             
-
    for(i in 1:(K-1)){
    for(j in (i+1):K){  
     Rho[i,j] = C * exp(-D * ( (j-i)^2 / KR^2) );           
     Rho[j,i] = Rho[i,j];                       
     }}
-
    for (i in 1:K){
     Rho[i,i] = 1;                               
     }
-
    return S*cholesky_decompose(Rho);
-   }
+  }
+   
 }
 
 data {
@@ -122,13 +135,12 @@ data {
   int age[N];
   int outcome[N];
   int gender[N];
-  int<lower = 0> P_empirical[2,MA];
   int<lower = 0> P_other[2,MA];  
   int<lower = 0> P_Pop[2,MA]; 
-
-  }
-
+}
+  
 parameters {
+
   vector[2] alpha;            //Gender-specific intercepts
   matrix[2,MA] age_effect;    //Matrix for Gaussian process age effects
   
@@ -139,90 +151,82 @@ parameters {
 }
 
 model {
-  vector[N] p;
 
+  vector[N] p;
   alpha ~ normal(0, 3);
   eta ~ exponential(2);
   sigma ~ exponential(1);
   rho ~ beta(10, 1);
-
+  
   //We compute age-specific offsets for each sex
+  
   for ( i in 1:2){
    age_effect[i,] ~ multi_normal_cholesky( rep_vector(0, MA) , GPL(MA, rho[i], eta[i], sigma[i]) );
-  }  
-
+  }
+  
   //This is the linear model: Choice probabilities are composed of (gender-specific) intercept and gender-specific offset for each age category
+  
   for ( i in 1:N ) {
    p[i] = alpha[gender[i]] + age_effect[gender[i],age[i]];
   }
-
+  
  //Binomial likelihood for observed choices
+ 
  outcome ~ binomial_logit(1, p);
-
 }
  
- //We use the generated quantities section for the poststratification
+ //We use the generated quantities section for the poststratification and to compute age and gender specific estimates
  
 generated quantities{
-   real<lower = 0, upper = 1> p_source;  // This is value for p in the sample
    real<lower = 0, upper = 1> p_pop;     // This is value for p in the population from which sample was taken
    real<lower = 0, upper = 1> p_other;   // This is value for p in the other population 
-
+ 
    real expect_pos = 0;
    int total = 0;
    
    //Here we compute predictions for each age and gender class
    vector[MA] pred_p_m;
    vector[MA] pred_p_f;
+   
    pred_p_m = inv_logit(alpha[1] + age_effect[1,]');
    pred_p_f = inv_logit(alpha[2] + age_effect[2,]');
-
-
+   
    //Here we do the actual poststratification
-    
-   //Sample  
-   for (a in 1:2)
-        for (b in 1:MA){
-         total += P_empirical[a,b];
-         expect_pos += P_empirical[a,b] * inv_logit(alpha[a] + age_effect[a,b]);
-     }
-    p_source = expect_pos / total;
    
-   
-   
-    //Poststratified to sample population  
-    total = 0;
-    expect_pos = 0;
-    for (a in 1:2)
+   //Poststratified to the population from which sample was taken
+
+    for (a in 1:2){
       for (b in 1:MA){
         total += P_Pop[a,b];
         expect_pos += P_Pop[a,b] * inv_logit(alpha[a] + age_effect[a,b]);
       }
+    }
     p_pop = expect_pos / total;
-
     
     
     //Poststratified to other population  
+    
     total = 0;
     expect_pos = 0;
-       for (a in 1:2)
+    
+       for (a in 1:2){
          for (b in 1:MA){
           total += P_other[a,b];
           expect_pos += P_other[a,b] * inv_logit(alpha[a] + age_effect[a,b]);
-      }
+         }
+       }
      p_other = expect_pos / total;
    
    
-
 }
-
 "
-
 
 #Pass code to Rstan and run models
 m_Berlin  <- stan( model_code  = MRP_House , data=d_list_Berlin  ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.99, max_treedepth = 13))  
 m_Vanuatu <- stan( model_code  = MRP_House , data=d_list_Vanuatu ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.99, max_treedepth = 13))  
 
+m_Berlin_basic  <- stan( model_code  = Basic_House , data=d_list_Berlin  ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.99, max_treedepth = 13))  
+m_Vanuatu_basic <- stan( model_code  = Basic_House , data=d_list_Vanuatu ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.99, max_treedepth = 13))  
 
 
 ######
@@ -344,12 +348,17 @@ par(mar=pyramid.plot(Sample_Berlin[,1],Sample_Berlin[,2],top.labels=c("", "","")
 mtext("Number of individuals per age class and gender", side = 1,line = 4.5,at = -33, outer = F, cex = 0.9)
 
 
-#Densities Tanna
+#Densities
 s_Berlin <- extract.samples(m_Berlin)
 s_Vanuatu <- extract.samples(m_Vanuatu)
-dens <- density(s_Vanuatu$p_source)
-x1 <- min(which(dens$x >= quantile(s_Vanuatu$p_source, 0)))  
-x2 <- max(which(dens$x <  quantile(s_Vanuatu$p_source, 1)))
+s_Berlin_basic <- extract.samples(m_Berlin_basic)
+s_Vanuatu_basic <- extract.samples(m_Vanuatu_basic)
+
+#Densities Tanna
+
+dens <- density(inv_logit(s_Vanuatu_basic$p))
+x1 <- min(which(dens$x >= quantile(inv_logit(s_Vanuatu_basic$p), 0)))  
+x2 <- max(which(dens$x <  quantile(inv_logit(s_Vanuatu_basic$p), 1)))
 plot(dens, xlim = c(0,1), ylim = c(0,15), type="n", ann = FALSE, bty = "n")
 with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[1],alpha = 0.5), border = NA))
 par(new=TRUE)
@@ -367,11 +376,10 @@ plot(dens, xlim = c(0,1), ylim = c(0,15), type="n", ann = FALSE, bty = "n")
 with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[8],alpha = 0.5), border = NA))
 legend("topleft", c("Empirical estimate","Poststratified to sample population", "Poststratified to other population"), col = c(alpha(col.pal[1],alpha = 0.5),alpha(col.pal[6],alpha = 0.5),alpha(col.pal[8],alpha = 0.5)), lwd = 6, bty="n", cex = 1)
 
-
 #Densities Berlin
-dens <- density(s_Berlin$p_source)
-x1 <- min(which(dens$x >= quantile(s_Berlin$p_source, 0)))  
-x2 <- max(which(dens$x <  quantile(s_Berlin$p_source, 1)))
+dens <- density(inv_logit(s_Berlin_basic$p))
+x1 <- min(which(dens$x >= quantile(inv_logit(s_Berlin_basic$p), 0)))  
+x2 <- max(which(dens$x <  quantile(inv_logit(s_Berlin_basic$p), 1)))
 plot(dens, xlim = c(0,1), ylim = c(0,15), type="n", ann = FALSE, bty = "n", yaxt = "n")
 with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[1],alpha = 0.5), border = NA))
 par(new=TRUE)
@@ -389,10 +397,3 @@ with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.p
 mtext("Probability of choosing prosocial option", side = 1,line = 2.9,at=-0.1, outer = F, cex = 0.9)
 
 #dev.off()
-
-
-
-
-
-
-

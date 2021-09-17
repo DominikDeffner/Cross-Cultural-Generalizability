@@ -1,5 +1,4 @@
 
-
 #Generalizing experimental results: Transportability of Causal Effects
 #Real data example based on House et al., 2020
 #The script prepares the data, runs the transport analysis and creates plot in Fig.6 in the manuscript
@@ -10,7 +9,7 @@ library(rethinking)
 library(plotrix)
 library(scales)
 library(RColorBrewer)
-setwd("~/GitHub/Cross_Cultural_Generalizability")
+setwd("~/GitHub/Cross-Cultural-Generalizability")
 
 #Load the data from House et al., 2020
 data <- read.csv("House_data/Model_6a_6b_6c_6d_data.csv")
@@ -27,10 +26,10 @@ data$gender <- data$GENDER_1female + 1
 data <- subset(data, data$condition != 3)
 
 #Create matrix with demography of study samples
-Demo <- matrix(0, 6, 12)
+Demo <- matrix(0, length(unique(data$fieldid)), length(unique(data$age)))
 for (j in sort(unique(data$fieldid))) {
-  for (i in 4:15) {
-      Demo[j, which(4:15 == i)] <- length(which(data$fieldid==j & data$age==i))
+  for (i in min(data$age):max(data$age)) {
+      Demo[j, which(min(data$age):max(data$age) == i)] <- length(which(data$fieldid==j & data$age==i))
   }
 }          
 
@@ -39,22 +38,23 @@ for (j in sort(unique(data$fieldid))) {
 #Prepare data list as input for Stan 
 d_list <- list(N = nrow(data),                         #Number of unique choices/participants    
                N_pop = length(unique(data$fieldid)),   #Number of field sites
-               MA = 12,                                #Maximum age (recoded, so below)
+               MA = 12,                                #Maximum age (recoded, see below)
                pop_id = data$fieldid,                  #Numerical field id (1=Berlin, 2=La Plata, 3=Phoenix, 4=Pune, 5=Shuar, 6=Wiichi)
-               age = data$age - 3,                     #We recode age which ranges from 4-15 in the data to 1-12 to make indexing easier
+               age = data$age - 3,                     #We recode age, which ranges from 4-15 in the data, to 1-12 to make indexing easier
                condition = data$condition-1,           #Dummy code conditions
                outcome = data$choice,                  #Dictator game choice
                gender = data$gender,                   #Gender: 1 = male and 2 = female
                Demo = Demo,                            #Demography of 6 samples
-               Ref = 6)                                #This is the target population for the transport 
+               Ref = 6)                                #This is the target population for the transport (we choose the Wiichi as an example)
 
 
-#Now we define the stan model code
-#The first model ("model_basic") is a simple fixed effects model that provides unbiased or "empirical" estimates of the causal effect in each population
-# As the causal effect does not directly correspond to any model parameters it is computed from the model parameters in the generated quantities section
+# Now we define the stan model code
+# The first model ("model_basic") is a simple fixed effects model that provides unbiased or "empirical" estimates of the 
+# causal effect in each population. As the causal effect is defined on the outcome scale (difference in choice probabilities)
+# and does not directly correspond to any model parameter,it is computed from the model parameters in the generated quantities section
 
-#The second model ("model_transport") uses Gaussian processes to compute age-specific causal effects for each population and uses these strata-specific effects
-#to transport effects to any arbitrary target population (given by variable "Ref", which per default is set to 6 corresponding to the Wiichi)
+#The second model ("model_transport") uses Gaussian processes to compute age-specific causal effects for each population.
+#It then uses these strata-specific effects to transport effects to any arbitrary target population (here Ref = 6, which corresponds to the Wiichi)
 
 model_basic <- "
 
@@ -79,8 +79,8 @@ parameters {
 model {
   vector[N] p;
 
-  alpha ~ normal(0, 1);
-  b_prime ~ normal(0, 3);
+  alpha ~ normal(0, 2);
+  b_prime ~ normal(0, 2);
 
   for ( i in 1:N ) {
    p[i] = alpha[pop_id[i]] + b_prime[pop_id[i]] * condition[i];
@@ -103,9 +103,10 @@ real empirical_p[N_pop];
 
 model_transport <- "
 
-// Define function for Gaussian process
+// Define function for Gaussian process; this computes how the covariance between different ages is expected to change as the distance increases
 
 functions{
+
   matrix GPL(int K, real C, real D, real S){
    matrix[K,K] Rho;                       
    real KR;                               
@@ -122,10 +123,12 @@ functions{
     }
 
    return S*cholesky_decompose(Rho);
-   }
+  }
+  
 }
 
 data {
+
   int N;
   int N_pop;
   int MA;
@@ -136,14 +139,18 @@ data {
   int gender[N];
   int Demo[N_pop, MA];
   int Ref;
+  
   }
 
 parameters {
+  
   real alpha[N_pop];
   real b_prime[N_pop];
-  matrix[N_pop, MA] age_effect;    //Vector to hold GP age effects
+  matrix[N_pop, MA] age_effect; //Matrix to hold Gaussian process age effects for each population
   
-  //Here we define the Control parameters for the Gaussian processes; they determine how covariance changes with increasing distance in age
+  // Here we define the Control parameters (separately for populations) for the Gaussian processes; 
+  // they determine how covariance changes with increasing distance in age
+  
   real<lower=0> eta[N_pop];
   real<lower=0> sigma[N_pop];
   real<lower=0, upper=1> rho[N_pop];
@@ -152,8 +159,8 @@ parameters {
 model {
   vector[N] p;
 
-  alpha ~ normal(0, 1);
-  b_prime ~ normal(0, 3);
+  alpha ~ normal(0, 2);
+  b_prime ~ normal(0, 2);
   eta ~ exponential(2);
   sigma ~ exponential(1);
   rho ~ beta(10, 1);
@@ -178,13 +185,10 @@ generated quantities{
 real transport_p[N_pop];
 
  for (h in 1:N_pop){
- 
    real total = 0;
-
     for ( i in 1:MA){
       total+= Demo[Ref,i] * (inv_logit(alpha[h]) - inv_logit(alpha[h] + (b_prime[h] + age_effect[h,i])) );
     }
-    
    transport_p[h] = total / sum(Demo[Ref,]);
  }
  
@@ -195,8 +199,8 @@ real transport_p[N_pop];
 
 
 #Pass code to Rstan and run models
-m_empirical <- stan( model_code  = model_basic , data= d_list ,iter = 5000, cores = 4, chains=4, control = list(adapt_delta=0.99, max_treedepth = 15))  
-m_transport <- stan( model_code  = model_transport , data= d_list ,iter = 5000, cores = 4,chains=4, control = list(adapt_delta=0.99, max_treedepth = 15))  
+m_empirical <- stan( model_code  = model_basic , data= d_list ,iter = 5000, cores = 1, chains=1, control = list(adapt_delta=0.99, max_treedepth = 15))  
+m_transport <- stan( model_code  = model_transport , data= d_list ,iter = 5000, cores = 1,chains=1, control = list(adapt_delta=0.99, max_treedepth = 15))  
 
 
 #Extract samples from the posterior

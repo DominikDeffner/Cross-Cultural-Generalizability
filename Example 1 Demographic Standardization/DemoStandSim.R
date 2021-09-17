@@ -55,9 +55,9 @@ SampleD_popdiff <- array(NA,c(2,2,length(Age_range)))
 for (pop_id in 1:2) {
   for (gender in 1:2) {
     for (i in Age_range) {
-    SampleD_popdiff[pop_id, gender, i] <- length(which(d$age[d$soc_id == pop_id]==i & d$gender[d$soc_id == pop_id] == gender))
-  }  
- }
+      SampleD_popdiff[pop_id, gender, i] <- length(which(d$age[d$soc_id == pop_id]==i & d$gender[d$soc_id == pop_id] == gender))
+    }  
+  }
 }
 
 # Create "Real" cultural differences: (Demography-independent) Probabilities in both populations on logit scale
@@ -88,32 +88,28 @@ for (pop in 1:2) {
 
 #Create data lists for both populations 
 d1_popdiff <- list(N = N,                    #Sample size
-           MA = max(Age_range),              #Maximum age in data set
-           gender = d$gender[d$soc_id==1],   #Gender
-           age = d$age[d$soc_id==1],         #Age
-           outcome = d$outcome[d$soc_id==1]  #Choices in dictator game
+                   MA = max(Age_range),              #Maximum age in data set
+                   gender = d$gender[d$soc_id==1],   #Gender
+                   age = d$age[d$soc_id==1],         #Age
+                   outcome = d$outcome[d$soc_id==1]  #Choices in dictator game
 )
 
 #Population demography of both sites: Stan model, as we coded it, requires number (as integer) of individuals in each cell (age/gender combination) for poststratification,
 #so we multiply by large number. This does not make a difference because we only care about the relative sizes of cells in the target population
 
-d1_popdiff$P_same  <- D_popdiff[1,, ]* 1e9
-d1_popdiff$P_other <-  D_popdiff[2,, ]* 1e9
-mode(d1_popdiff$P_same) <- 'integer'
-mode(d1_popdiff$P_other) <- 'integer'
+d1_popdiff$Pop <-  D_popdiff[2,, ]* 1e9
+mode(d1_popdiff$Pop) <- 'integer'
 
 
 d2_popdiff <- list(N = N,
-           MA = max(Age_range),
-           gender = d$gender[d$soc_id==2], 
-           age = d$age[d$soc_id==2],
-           outcome = d$outcome[d$soc_id==2]
+                   MA = max(Age_range),
+                   gender = d$gender[d$soc_id==2], 
+                   age = d$age[d$soc_id==2],
+                   outcome = d$outcome[d$soc_id==2]
 )
 
-d2_popdiff$P_same  <- D_popdiff[2,, ]* 1e9
-d2_popdiff$P_other <-  D_popdiff[1,, ]* 1e9
-mode(d2_popdiff$P_same) <- 'integer'
-mode(d2_popdiff$P_other) <- 'integer'
+d2_popdiff$Pop <-  D_popdiff[1,, ]* 1e9
+mode(d2_popdiff$Pop) <- 'integer'
 
 
 
@@ -136,7 +132,7 @@ D_samplediff[1,1, ] <- dexp(seq(0, 100, 1), 0.04)[Age_range]
 D_samplediff[1,2, ] <- dexp(seq(0, 100, 1), 0.04)[Age_range]
 
 D_samplediff[2,1, ] <- dexp(seq(0, 100, 1), 0.04)[Age_range]
-D_samplediff[2,2, ] <-dexp(seq(0, 100, 1), 0.04)[Age_range]
+D_samplediff[2,2, ] <- dexp(seq(0, 100, 1), 0.04)[Age_range]
 
 
 #Generate data
@@ -204,18 +200,39 @@ d2_samplediff <- list(N = N,
 )
 
 
-#Population demography of both sites: Stan model, as we coded it, requires number (as integer) of individuals in each cell (age/gender combination) for poststratification,
-#so we multiply by large number. This does not make a difference because we only care about the relative sizes of cells in the target population
+#Population demography of both sites: Stan model, as we coded it, requires number (as integer) of individuals 
+#in each cell (age/gender combination) for poststratification, so we multiply by large number. 
+#This does not make a difference because we only care about the relative sizes of cells in the target population
 
-d1_samplediff$P_same <- SampleD_samplediff[1,,]
-d1_samplediff$P_other <-  D_samplediff[1,,] * 1e9
-mode(d1_samplediff$P_other) <- 'integer'
+d1_samplediff$Pop <-  D_samplediff[1,,] * 1e9
+mode(d1_samplediff$Pop) <- 'integer'
 
 
-d2_samplediff$P_same <- SampleD_samplediff[2,,]
-d2_samplediff$P_other <-  D_samplediff[2,,] * 1e9
-mode(d2_samplediff$P_other) <- 'integer'
+d2_samplediff$Pop <-  D_samplediff[2,,] * 1e9
+mode(d2_samplediff$Pop) <- 'integer'
 
+
+
+
+#Here, we code the stan model for a simple Bernoulli model. This is used for "empirical" estimates
+
+
+Basic_sim <- "
+
+data {
+  int N;
+  int outcome[N];
+}
+
+parameters {
+  real p;            
+}
+
+model {
+ outcome ~ bernoulli_logit(p);
+}
+
+"
 
 
 
@@ -251,9 +268,7 @@ data {
   int age[N];
   int outcome[N];
   int gender[N];
-  int<lower = 0> P_same[2,MA];   
-  int<lower = 0> P_other[2,MA];   
-
+  int<lower = 0> Pop[2,MA];   
   }
 
 parameters {
@@ -292,65 +307,56 @@ model {
  //We use the generated quantities section for the poststratification
  
 generated quantities{
-   real<lower = 0, upper = 1> p_source;  // This is value for p in the sample
    real<lower = 0, upper = 1> p_target;  // This is value for p in the target population 
-
    real expect_pos = 0;
    int total = 0;
+   
+  vector[MA] pred_p_m;
+   vector[MA] pred_p_f;
    
   //Here we compute predictions for each age and gender class
   pred_p_m = inv_logit(alpha[1] + age_effect[1,]');
   pred_p_f = inv_logit(alpha[2] + age_effect[2,]');
-   vector[MA] pred_p_m;
-   vector[MA] pred_p_f;
 
 
    //Here we do the actual poststratification
-
-   //Sample  
-   for (a in 1:2)
-        for (b in 1:MA){
-         total += P_same[a,b];
-         expect_pos += P_same[a,b] * inv_logit(alpha[a] + age_effect[a,b]);
-     }
-     
-   p_source = expect_pos / total;
-   
-   
-    //Poststratified to sample population  
-    total = 0;
-    expect_pos = 0;
-    
-       for (a in 1:2)
+      for (a in 1:2)
          for (b in 1:MA){
-          total += P_other[a,b];
-          expect_pos += P_other[a,b] * inv_logit(alpha[a] + age_effect[a,b]);
+          total += Pop[a,b];
+          expect_pos += Pop[a,b] * inv_logit(alpha[a] + age_effect[a,b]);
       }
-      
     p_target = expect_pos / total;
-   
 }
 
 "
 
 
 #Pass code to Rstan, run models and extract the samples from the posterior
+#Empirical Estimates
+m_popdiff1_basic <- stan( model_code  = Basic_sim , data=d1_popdiff ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.99, max_treedepth = 13))  
+m_popdiff2_basic <- stan( model_code  = Basic_sim , data=d2_popdiff ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.99, max_treedepth = 13))  
+s_popdiff1_basic <- extract.samples(m_popdiff1_basic)
+s_popdiff2_basic <- extract.samples(m_popdiff2_basic)
 
 
+m_samplediff1_basic <- stan( model_code  = Basic_sim , data=d1_samplediff ,iter = 5000, cores = 4, seed=4, chains=4, control = list(adapt_delta=0.99, max_treedepth = 13))  
+m_samplediff2_basic <- stan( model_code  = Basic_sim , data=d2_samplediff ,iter = 5000, cores = 4, seed=4, chains=4, control = list(adapt_delta=0.99, max_treedepth = 13))  
+s_samplediff1_basic <- extract.samples(m_samplediff1_basic)
+s_samplediff2_basic <- extract.samples(m_samplediff2_basic)
+
+#Mister P
 m_popdiff1 <- stan( model_code  = MRP_sim , data=d1_popdiff ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.99, max_treedepth = 13))  
 m_popdiff2 <- stan( model_code  = MRP_sim , data=d2_popdiff ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.99, max_treedepth = 13))  
-
 s_popdiff1 <- extract.samples(m_popdiff1)
 s_popdiff2 <- extract.samples(m_popdiff2)
 
 
-
 m_samplediff1 <- stan( model_code  = MRP_sim , data=d1_samplediff ,iter = 5000, cores = 4, seed=4, chains=4, control = list(adapt_delta=0.99, max_treedepth = 13))  
-
 m_samplediff2 <- stan( model_code  = MRP_sim , data=d2_samplediff ,iter = 5000, cores = 4, seed=4, chains=4, control = list(adapt_delta=0.99, max_treedepth = 13))  
-
 s_samplediff1 <- extract.samples(m_samplediff1)
 s_samplediff2 <- extract.samples(m_samplediff2)
+
+
 
 
 
@@ -380,8 +386,8 @@ seqoverall <- seq
 ###
 
 
-graphics.off()
-png("AgeCurves.png", res = 900, height = 16, width = 24, units = "cm")
+#graphics.off()
+#png("AgeCurves.png", res = 900, height = 16, width = 24, units = "cm")
 
 
 par(mfrow = c(2,2),
@@ -500,7 +506,7 @@ segments(x0 = 1:d2_samplediff$MA, y0 = Lower, x1=  1:d2_samplediff$MA, y1 = High
 mtext("Age", side = 1, outer = TRUE, line = 1, cex = 1.2)
 mtext("Probability of choosing prosocial option", side = 2, line = 1.2,outer = TRUE)
 
-dev.off()
+#dev.off()
 
 
 
@@ -510,8 +516,8 @@ dev.off()
 ##
 ###
 
-graphics.off()
-png("DemostandLarge.png", res = 900, height = 22, width = 25, units = "cm")
+#graphics.off()
+#png("DemostandLarge.png", res = 900, height = 22, width = 25, units = "cm")
 
 par(mfrow = c(3,4), 
     mar = c(3,1,3,2), 
@@ -553,9 +559,9 @@ mtext("Number of individuals per age class and gender", side = 1,line = 4,at = -
 
 
 #Densities 1
-dens <- density(s_popdiff1$p_source)
-x1 <- min(which(dens$x >= quantile(s_popdiff1$p_source, 0)))  
-x2 <- max(which(dens$x <  quantile(s_popdiff1$p_source, 1)))
+dens <- density(inv_logit(s_popdiff1_basic$p))
+x1 <- min(which(dens$x >= quantile(inv_logit(s_popdiff1_basic$p), 0)))  
+x2 <- max(which(dens$x <  quantile(inv_logit(s_popdiff1_basic$p), 1)))
 plot(dens, xlim = c(0,1), ylim = c(0,25), type="n", ann = FALSE, bty = "n")
 with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[1],alpha = 0.9), border = NA))
 abline(v = True_Value_popdiff[1], lty = 2, lwd = 2)
@@ -568,9 +574,9 @@ with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.p
 mtext("Density", side = 2,line = 3, outer = F, cex = 1)
 legend("topright", c("Empirical","Poststr. to Pop II"), col = c(alpha(col.pal[1],alpha = 0.9),alpha(col.pal[1],alpha = 0.3)), lwd = 6, bty="n", cex = 0.9)
 
-dens <- density(s_popdiff2$p_source)
-x1 <- min(which(dens$x >= quantile(s_popdiff2$p_source, 0)))  
-x2 <- max(which(dens$x <  quantile(s_popdiff2$p_source, 1)))
+dens <- density(inv_logit(s_popdiff2_basic$p))
+x1 <- min(which(dens$x >= quantile(inv_logit(s_popdiff2_basic$p), 0)))  
+x2 <- max(which(dens$x <  quantile(inv_logit(s_popdiff2_basic$p), 1)))
 plot(dens, xlim = c(0,1), ylim = c(0,25), type="n", ann = FALSE, bty = "n", yaxt = "n")
 with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[4],alpha = 0.9), border = NA))
 abline(v = True_Value_popdiff[2], lty = 2, lwd = 2)
@@ -585,9 +591,9 @@ legend("topleft", c("Empirical","Poststr. to Pop I"), col = c(alpha(col.pal[4],a
 
 
 #Densities 2
-dens <- density(s_samplediff1$p_source)
-x1 <- min(which(dens$x >= quantile(s_samplediff1$p_source, 0)))  
-x2 <- max(which(dens$x <  quantile(s_samplediff1$p_source, 1)))
+dens <- density(inv_logit(s_samplediff1_basic$p))
+x1 <- min(which(dens$x >= quantile(inv_logit(s_samplediff1_basic$p), 0)))  
+x2 <- max(which(dens$x <  quantile(inv_logit(s_samplediff1_basic$p), 1)))
 plot(dens, xlim = c(0,1), ylim = c(0,25), type="n", yaxt = "n",ann = FALSE, bty = "n")
 with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[5],alpha = 0.9), border = NA))
 abline(v = True_Value_samplediff[1], lty = 2, lwd = 2)
@@ -599,9 +605,9 @@ plot(dens, xlim = c(0,1), ylim = c(0,25), type="n", ann = FALSE, bty = "n", yaxt
 with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[5],alpha = 0.3), border = NA))
 legend("topright", c("Empirical","Poststr. to Pop I"), col = c(alpha(col.pal[5],alpha = 0.9),alpha(col.pal[5],alpha = 0.3)), lwd = 6, bty="n", cex = 0.9)
 
-dens <- density(s_samplediff2$p_source)
-x1 <- min(which(dens$x >= quantile(s_samplediff2$p_source, 0)))  
-x2 <- max(which(dens$x <  quantile(s_samplediff2$p_source, 1)))
+dens <- density(inv_logit(s_samplediff2_basic$p))
+x1 <- min(which(dens$x >= quantile(inv_logit(s_samplediff2_basic$p), 0)))  
+x2 <- max(which(dens$x <  quantile(inv_logit(s_samplediff2_basic$p), 1)))
 plot(dens, xlim = c(0,1), ylim = c(0,25), type="n", ann = FALSE, bty = "n", yaxt = "n")
 with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.pal[6],alpha = 0.9), border = NA))
 abline(v = True_Value_samplediff[2], lty = 2, lwd = 2)
@@ -615,7 +621,7 @@ with(dens, polygon(x=c(x[c(x1,x1:x2,x2)]), y= c(0, y[x1:x2], 0), col=alpha(col.p
 legend("topleft", c("Empirical","Poststr. to Pop II"), col = c(alpha(col.pal[6],alpha = 0.9),alpha(col.pal[6],alpha = 0.3)), lwd = 6, bty="n", cex = 0.9)
 mtext("Probability of choosing prosocial option", side = 1,line = 2.9,at=-0.1, outer = F, cex = 0.9)
 
-dev.off()
+#dev.off()
 
 
 

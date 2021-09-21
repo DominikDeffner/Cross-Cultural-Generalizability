@@ -1,3 +1,4 @@
+
 #Generalizing description: Cross-cultural comparisons and demographic standardization
 #Real data example based on House et al., 2020
 #The script prepares the data, runs the multilevel regression with poststratification analysis and creates plot in Fig.4 in the manuscript

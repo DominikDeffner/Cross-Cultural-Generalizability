@@ -78,25 +78,20 @@ parameters {
 
 model {
   vector[N] p;
-
   alpha ~ normal(0, 2);
   b_prime ~ normal(0, 2);
-
   for ( i in 1:N ) {
    p[i] = alpha[pop_id[i]] + b_prime[pop_id[i]] * condition[i];
   }
-
  outcome ~ binomial_logit(1, p);
 }
 
 generated quantities{
 
 real empirical_p[N_pop];
-
  for (h in 1:N_pop){
    empirical_p[h] =  inv_logit(alpha[h]) - inv_logit(alpha[h] + b_prime[h]);
  }
- 
 }
  
 "
@@ -106,29 +101,24 @@ model_transport <- "
 // Define function for Gaussian process; this computes how the covariance between different ages is expected to change as the distance increases
 
 functions{
-
   matrix GPL(int K, real C, real D, real S){
    matrix[K,K] Rho;                       
    real KR;                               
    KR = K;                             
-
    for(i in 1:(K-1)){
    for(j in (i+1):K){  
     Rho[i,j] = C * exp(-D * ( (j-i)^2 / KR^2) );           
     Rho[j,i] = Rho[i,j];                       
     }}
-
    for (i in 1:K){
     Rho[i,i] = 1;                               
     }
 
    return S*cholesky_decompose(Rho);
   }
-  
 }
 
 data {
-
   int N;
   int N_pop;
   int MA;
@@ -139,18 +129,15 @@ data {
   int gender[N];
   int Demo[N_pop, MA];
   int Ref;
-  
-  }
+}
 
 parameters {
-  
   real alpha[N_pop];
   real b_prime[N_pop];
   matrix[N_pop, MA] age_effect; //Matrix to hold Gaussian process age effects for each population
   
   // Here we define the Control parameters (separately for populations) for the Gaussian processes; 
   // they determine how covariance changes with increasing distance in age
-  
   real<lower=0> eta[N_pop];
   real<lower=0> sigma[N_pop];
   real<lower=0, upper=1> rho[N_pop];
@@ -158,7 +145,6 @@ parameters {
 
 model {
   vector[N] p;
-
   alpha ~ normal(0, 2);
   b_prime ~ normal(0, 2);
   eta ~ exponential(2);
@@ -174,16 +160,14 @@ model {
   for ( i in 1:N ) {
    p[i] = alpha[pop_id[i]] + (b_prime[pop_id[i]] + age_effect[pop_id[i],age[i]]) * condition[i];
   }
-
- outcome ~ binomial_logit(1, p);
+  outcome ~ binomial_logit(1, p);
 }
 
-//We use the generated quantities section to compute causal effect and adjust it for age-structure of target population
+//We use the generated quantities section to compute causal effect and adjust it for demography of target population
 
 generated quantities{
 
 real transport_p[N_pop];
-
  for (h in 1:N_pop){
    real total = 0;
     for ( i in 1:MA){
@@ -191,7 +175,6 @@ real transport_p[N_pop];
     }
    transport_p[h] = total / sum(Demo[Ref,]);
  }
- 
 }
 
 "
@@ -199,8 +182,8 @@ real transport_p[N_pop];
 
 
 #Pass code to Rstan and run models
-m_empirical <- stan( model_code  = model_basic , data= d_list ,iter = 5000, cores = 1, chains=1, control = list(adapt_delta=0.99, max_treedepth = 15))  
-m_transport <- stan( model_code  = model_transport , data= d_list ,iter = 5000, cores = 1,chains=1, control = list(adapt_delta=0.99, max_treedepth = 15))  
+m_empirical <- stan( model_code  = model_basic , data= d_list ,iter = 5000, cores = 4, chains=4, control = list(adapt_delta=0.99, max_treedepth = 15))  
+m_transport <- stan( model_code  = model_transport , data= d_list ,iter = 5000, cores = 4,chains=4, control = list(adapt_delta=0.99, max_treedepth = 15))  
 
 
 #Extract samples from the posterior

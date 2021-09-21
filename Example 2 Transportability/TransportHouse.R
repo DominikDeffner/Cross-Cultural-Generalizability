@@ -12,7 +12,7 @@ library(RColorBrewer)
 setwd("~/GitHub/Cross-Cultural-Generalizability")
 
 #Load the data from House et al., 2020
-data <- read.csv("House_data/Model_6a_6b_6c_6d_data.csv")
+data <- read.csv("data/Model_6a_6b_6c_6d_data.csv")
 
 #Create new variable for experimental condition, round ages and recode gender such that 1 = male and 2 = female
 data$condition <- sapply(1:nrow(data), function(x) which(c(data$CONDITION_1_1yes[x],data$CONDITION_2_1yes[x],data$CONDITION_3_1yes[x]) == 1 ))

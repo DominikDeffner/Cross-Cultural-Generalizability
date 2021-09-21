@@ -11,6 +11,7 @@ library(scales)
 library(sn)
 library(plotrix)
 library(RColorBrewer)
+setwd("~/GitHub/Cross-Cultural-Generalizability")
 
 N <- 500   # Sample size
 Age_range <- c(1:90) #Age range of participants

@@ -22,3 +22,5 @@ R files contain code to simulate/prepare data, run the multilevel regression wit
 
 "data" contains relevant experimental data from House et al., 2020 (https://www.nature.com/articles/s41562-019-0734-z), 
 as well as demographic data from Vanuatu und Berlin used for the data example in section 3.1.
+
+The code was written in R 4.0.3. Statistical models are fit using the Stan MCMC engine via the rstan package (2.21.2), which requires a C++ compiler. Installation        instructions are available at https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started. The rethinking package (2.12) is required to process fitted model outputs installation instructions at http://xcelab.net/rm/software/.

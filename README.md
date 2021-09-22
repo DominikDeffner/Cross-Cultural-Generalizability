@@ -14,7 +14,7 @@ This repository contains the scripts to reproduce all analyses and figures in
 
 "Example 2 Generalizing experimental results" corresponds to section 3.3. where we use the causal framework to generalize and compare causal effects across societies.
 
-- "TransportHouse" shows real data example for the transport of causal effects across populations (section 3.2.2. in the main text)
+- "TransportHouse.r" shows real data example for the transport of causal effects across populations (section 3.2.2. in the main text)
 - "model_basic.stan" is a simple fixed effects model that provides unbiased or "empirical" estimates of the causal effect in each population.
 - "model_transport.stan" uses Gaussian processes to compute age-specific causal effects for each population. It then uses these strata-specific effects to transport effects to any arbitrary target population.
 

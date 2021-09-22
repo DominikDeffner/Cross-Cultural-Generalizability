@@ -1,7 +1,7 @@
 
 #Generalizing experimental results: Transportability of Causal Effects
 #Real data example based on House et al., 2020
-#The script prepares the data, runs the transport analysis and creates plot in Fig.6 in the manuscript
+#The script prepares the data, runs the transport analysis and creates plot in Fig.5 in the manuscript
 
 #Load some packages and set working directory to main folder
 library(readr)
@@ -34,7 +34,6 @@ for (j in sort(unique(data$fieldid))) {
 }          
 
 
-
 #Prepare data list as input for Stan 
 d_list <- list(N = nrow(data),                         #Number of unique choices/participants    
                N_pop = length(unique(data$fieldid)),   #Number of field sites
@@ -48,7 +47,7 @@ d_list <- list(N = nrow(data),                         #Number of unique choices
                Ref = 6)                                #This is the target population for the transport (we choose the Wiichi as an example)
 
 
-# Now we define the stan model code
+# The next section invokes the stan model code in the example 2 folder
 # The first model ("model_basic") is a simple fixed effects model that provides unbiased or "empirical" estimates of the 
 # causal effect in each population. As the causal effect is defined on the outcome scale (difference in choice probabilities)
 # and does not directly correspond to any model parameter,it is computed from the model parameters in the generated quantities section
@@ -56,134 +55,10 @@ d_list <- list(N = nrow(data),                         #Number of unique choices
 #The second model ("model_transport") uses Gaussian processes to compute age-specific causal effects for each population.
 #It then uses these strata-specific effects to transport effects to any arbitrary target population (here Ref = 6, which corresponds to the Wiichi)
 
-model_basic <- "
-
-data {
-  int N;
-  int N_pop;
-  int MA;
-  int age[N];
-  int pop_id[N];
-  int condition[N];
-  int outcome[N];
-  int gender[N];
-  int Demo[N_pop, MA];
-  int Ref;
-  }
-
-parameters {
-  real alpha[N_pop];
-  real b_prime[N_pop];
-}
-
-model {
-  vector[N] p;
-  alpha ~ normal(0, 2);
-  b_prime ~ normal(0, 2);
-  for ( i in 1:N ) {
-   p[i] = alpha[pop_id[i]] + b_prime[pop_id[i]] * condition[i];
-  }
- outcome ~ binomial_logit(1, p);
-}
-
-generated quantities{
-
-real empirical_p[N_pop];
- for (h in 1:N_pop){
-   empirical_p[h] =  inv_logit(alpha[h]) - inv_logit(alpha[h] + b_prime[h]);
- }
-}
- 
-"
-
-model_transport <- "
-
-// Define function for Gaussian process; this computes how the covariance between different ages is expected to change as the distance increases
-
-functions{
-  matrix GPL(int K, real C, real D, real S){
-   matrix[K,K] Rho;                       
-   real KR;                               
-   KR = K;                             
-   for(i in 1:(K-1)){
-   for(j in (i+1):K){  
-    Rho[i,j] = C * exp(-D * ( (j-i)^2 / KR^2) );           
-    Rho[j,i] = Rho[i,j];                       
-    }}
-   for (i in 1:K){
-    Rho[i,i] = 1;                               
-    }
-
-   return S*cholesky_decompose(Rho);
-  }
-}
-
-data {
-  int N;
-  int N_pop;
-  int MA;
-  int age[N];
-  int pop_id[N];
-  int condition[N];
-  int outcome[N];
-  int gender[N];
-  int Demo[N_pop, MA];
-  int Ref;
-}
-
-parameters {
-  real alpha[N_pop];
-  real b_prime[N_pop];
-  matrix[N_pop, MA] age_effect; //Matrix to hold Gaussian process age effects for each population
-  
-  // Here we define the Control parameters (separately for populations) for the Gaussian processes; 
-  // they determine how covariance changes with increasing distance in age
-  real<lower=0> eta[N_pop];
-  real<lower=0> sigma[N_pop];
-  real<lower=0, upper=1> rho[N_pop];
-}
-
-model {
-  vector[N] p;
-  alpha ~ normal(0, 2);
-  b_prime ~ normal(0, 2);
-  eta ~ exponential(2);
-  sigma ~ exponential(1);
-  rho ~ beta(10, 1);
- 
-  //We compute age-specific offsets for each population
-  for (h in 1:N_pop){
-    age_effect[h,] ~ multi_normal_cholesky( rep_vector(0, MA) , GPL(MA, rho[h], eta[h], sigma[h]) );
-  }
-    
-  //This is the linear model: Choice probabilities are composed of (site-specific) intercept and age-specific effect of norm prime condition  
-  for ( i in 1:N ) {
-   p[i] = alpha[pop_id[i]] + (b_prime[pop_id[i]] + age_effect[pop_id[i],age[i]]) * condition[i];
-  }
-  outcome ~ binomial_logit(1, p);
-}
-
-//We use the generated quantities section to compute causal effect and adjust it for demography of target population
-
-generated quantities{
-
-real transport_p[N_pop];
- for (h in 1:N_pop){
-   real total = 0;
-    for ( i in 1:MA){
-      total+= Demo[Ref,i] * (inv_logit(alpha[h]) - inv_logit(alpha[h] + (b_prime[h] + age_effect[h,i])) );
-    }
-   transport_p[h] = total / sum(Demo[Ref,]);
- }
-}
-
-"
-
-
 
 #Pass code to Rstan and run models
-m_empirical <- stan( model_code  = model_basic , data= d_list ,iter = 5000, cores = 4, chains=4, control = list(adapt_delta=0.99, max_treedepth = 15))  
-m_transport <- stan( model_code  = model_transport , data= d_list ,iter = 5000, cores = 4,chains=4, control = list(adapt_delta=0.99, max_treedepth = 15))  
+m_empirical <- stan(file  = "Example 2 Transportability/model_basic.stan" , data= d_list ,iter = 5000, cores = 4, chains=4, control = list(adapt_delta=0.99, max_treedepth = 15))  
+m_transport <- stan(file  = "Example 2 Transportability/model_transport.stan" , data= d_list ,iter = 5000, cores = 4,chains=4, control = list(adapt_delta=0.99, max_treedepth = 15))  
 
 
 #Extract samples from the posterior
@@ -191,7 +66,7 @@ s_basic <- extract.samples(m_empirical)
 s <- extract.samples(m_transport)
 
 
-#Code for Fig.6 in the manuscript
+#Code for Fig.5 in the manuscript
 
 col.pal <- brewer.pal(8, "Dark2") #create a palette which you loop over for corresponding values
 seqoverall <- seq
@@ -230,6 +105,4 @@ mtext("Effect of norm prime on prosocial choices", side = 1,line = 1.5,outer = T
 mtext("'Transport' of causal effects across populations", side = 3,line = 1.5,outer = TRUE, cex = 1)
 
 #dev.off()
-
-
 

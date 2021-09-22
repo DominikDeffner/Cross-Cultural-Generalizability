@@ -1,7 +1,7 @@
 
 #Generalizing description: Cross-cultural comparisons and demographic standardization
 #Real data example based on House et al., 2020
-#The script prepares the data, runs the multilevel regression with poststratification analysis and creates plot in Fig.4 in the manuscript
+#The script prepares the data, runs the multilevel regression with poststratification analysis and creates plot in Fig.3 in the manuscript
 
 #Load some packages and set working directory to main folder
 library(readr)
@@ -66,8 +66,6 @@ for (i in 1:20) {
 
 
 
-
-
 #Prepare data lists as input for Stan 
 
 d_list_Berlin <- list(N = nrow(d_Berlin),              #Sample size
@@ -88,146 +86,22 @@ d_list_Vanuatu <- list(N = nrow(d_Vanuatu),            #Sample size
                        P_other = t(Pop_Berlin_raw))     #Population demography of Berlin
 
 
-#Here, we code the stan model for a simple Bernoulli model. This is used for "empirical" estimates
+
+# The next section invokes the stan model code in the example 1 folder
+
+# The first model ("model_empirical") is a simple Bernoulli model that provides unbiased or "empirical" estimate in each population. 
+
+# The second model ("model_MRpoststratification") uses Gaussian processes to compute age and gender specific estimates and poststratifies to population 
+# from which sample was taken and to the other population
 
 
-Basic_House <- "
-data {
-  int N;
-  int outcome[N];
-}
-parameters {
-  real p;            
-}
-model {
- outcome ~ bernoulli_logit(p);
-}
-"
-
-
-#Here, we code the stan model for our Gaussian Process Multilevel Regression with Poststratification
-
-MRP_House <- "
-
-//Function for Gaussian Process kernel
-
-functions{
-
-  matrix GPL(int K, real C, real D, real S){
-   matrix[K,K] Rho;                       
-   real KR;                               
-   KR = K;                             
-   for(i in 1:(K-1)){
-   for(j in (i+1):K){  
-    Rho[i,j] = C * exp(-D * ( (j-i)^2 / KR^2) );           
-    Rho[j,i] = Rho[i,j];                       
-    }}
-   for (i in 1:K){
-    Rho[i,i] = 1;                               
-    }
-   return S*cholesky_decompose(Rho);
-  }
-   
-}
-
-data {
-  int N;
-  int MA;
-  int age[N];
-  int outcome[N];
-  int gender[N];
-  int<lower = 0> P_other[2,MA];  
-  int<lower = 0> P_Pop[2,MA]; 
-}
-  
-parameters {
-
-  vector[2] alpha;            //Gender-specific intercepts
-  matrix[2,MA] age_effect;    //Matrix for Gaussian process age effects
-  
-  //Here we define the Control parameters for the Gaussian processes; they determine how covariance changes with increasing distance in age
-  real<lower=0> eta[2];
-  real<lower=0> sigma[2];
-  real<lower=0, upper=1> rho[2];
-}
-
-model {
-
-  vector[N] p;
-  alpha ~ normal(0, 3);
-  eta ~ exponential(2);
-  sigma ~ exponential(1);
-  rho ~ beta(10, 1);
-  
-  //We compute age-specific offsets for each sex
-  
-  for ( i in 1:2){
-   age_effect[i,] ~ multi_normal_cholesky( rep_vector(0, MA) , GPL(MA, rho[i], eta[i], sigma[i]) );
-  }
-  
-  //This is the linear model: Choice probabilities are composed of (gender-specific) intercept and gender-specific offset for each age category
-  
-  for ( i in 1:N ) {
-   p[i] = alpha[gender[i]] + age_effect[gender[i],age[i]];
-  }
-  
- //Binomial likelihood for observed choices
- 
- outcome ~ binomial_logit(1, p);
-}
- 
- //We use the generated quantities section for the poststratification and to compute age and gender specific estimates
- 
-generated quantities{
-   real<lower = 0, upper = 1> p_pop;     // This is value for p in the population from which sample was taken
-   real<lower = 0, upper = 1> p_other;   // This is value for p in the other population 
- 
-   real expect_pos = 0;
-   int total = 0;
-   
-   //Here we compute predictions for each age and gender class
-   vector[MA] pred_p_m;
-   vector[MA] pred_p_f;
-   
-   pred_p_m = inv_logit(alpha[1] + age_effect[1,]');
-   pred_p_f = inv_logit(alpha[2] + age_effect[2,]');
-   
-   //Here we do the actual poststratification
-   
-   //Poststratified to the population from which sample was taken
-
-    for (a in 1:2){
-      for (b in 1:MA){
-        total += P_Pop[a,b];
-        expect_pos += P_Pop[a,b] * inv_logit(alpha[a] + age_effect[a,b]);
-      }
-    }
-    p_pop = expect_pos / total;
-    
-    
-    //Poststratified to other population  
-    
-    total = 0;
-    expect_pos = 0;
-    
-       for (a in 1:2){
-         for (b in 1:MA){
-          total += P_other[a,b];
-          expect_pos += P_other[a,b] * inv_logit(alpha[a] + age_effect[a,b]);
-         }
-       }
-     p_other = expect_pos / total;
-   
-   
-}
-"
 
 #Pass code to Rstan and run models
-m_Berlin  <- stan( model_code  = MRP_House , data=d_list_Berlin  ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.99, max_treedepth = 13))  
-m_Vanuatu <- stan( model_code  = MRP_House , data=d_list_Vanuatu ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.99, max_treedepth = 13))  
+m_Berlin  <- stan( file  = "Example 1 Generalizing Description/model_MRpoststratification.stan" , data=d_list_Berlin  ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.99, max_treedepth = 13))  
+m_Vanuatu <- stan( file  = "Example 1 Generalizing Description/model_MRpoststratification.stan" , data=d_list_Vanuatu ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.99, max_treedepth = 13))  
 
-m_Berlin_basic  <- stan( model_code  = Basic_House , data=d_list_Berlin  ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.99, max_treedepth = 13))  
-m_Vanuatu_basic <- stan( model_code  = Basic_House , data=d_list_Vanuatu ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.99, max_treedepth = 13))  
+m_Berlin_basic  <- stan( file  = "Example 1 Generalizing Description/model_empirical.stan" , data=d_list_Berlin  ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.99, max_treedepth = 13))  
+m_Vanuatu_basic <- stan( file  = "Example 1 Generalizing Description/model_empirical.stan" , data=d_list_Vanuatu ,iter = 5000, cores = 4, seed=1, chains=4, control = list(adapt_delta=0.99, max_treedepth = 13))  
 
 
 ######
@@ -316,9 +190,10 @@ mtext("Probability of choosing prosocial option", side = 2, line = 1,outer = TRU
 
 ###
 ##
-# Demographic standardization comparing Tanna, Vanuatu, and Berlin, Germany (Fig.4)
+# Demographic standardization comparing Tanna, Vanuatu, and Berlin, Germany (Fig.3)
 ##
 ###
+
 
 #graphics.off()
 #png("DemostandBERVAT.png", res = 900, height = 19, width = 15, units = "cm")

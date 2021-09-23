@@ -4,6 +4,8 @@ This repository contains the scripts to reproduce all analyses and figures in
 
 ****Deffner, D., Rohrer, J. & McElreath, R. (submitted) A Causal Framework for Cross-Cultural Generalizability****
 
+The preprint can be found at https://psyarxiv.com/fqukp
+
 "Example 1 Generalizing description" corresponds to section 3.1. where we use causal thinking to accurately describe and compare the distribution of a trait across societies.
 
 - "DemoStandSim.r" shows simulated data example for demographic standardization (Appendix B in the supplementary material)

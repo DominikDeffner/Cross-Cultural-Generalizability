@@ -14,7 +14,7 @@ The preprint can be found at https://psyarxiv.com/fqukp
 - "model_MRpoststratification.stan" uses Gaussian processes to compute age and gender specific estimates and poststratifies to population from which sample was taken and to the other population. Remember that arbitrary target populations are possible and populations can vary in any number of background factors.
 
 
-"Example 2 Generalizing experimental results" corresponds to section 3.3. where we use the causal framework to generalize and compare causal effects across societies.
+"Example 2 Generalizing experimental results" corresponds to section 3.2. where we use the causal framework to generalize and compare causal effects across societies.
 
 - "TransportHouse.r" shows real data example for the transport of causal effects across populations (section 3.2.2. in the main text)
 - "model_basic.stan" is a simple fixed effects model that provides unbiased or "empirical" estimates of the causal effect in each population.

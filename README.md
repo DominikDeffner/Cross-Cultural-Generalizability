@@ -1,8 +1,10 @@
+<a href="https://zenodo.org/badge/latestdoi/353287502"><img src="https://zenodo.org/badge/353287502.svg" alt="DOI"></a>
+
 # Cross-Cultural Generalizability
 
 This repository contains the scripts to reproduce all analyses and figures in 
 
-****Deffner, D., Rohrer, J. & McElreath, R. (2022) A Causal Framework for Cross-Cultural Generalizability. Advances in Methods and Practices in Psychological Science****
+****Deffner, D., Rohrer, J. & McElreath, R. (2022) A Causal Framework for Cross-Cultural Generalizability. Advances in Methods and Practices in Psychological Science.****
 
 The preprint can be found at https://psyarxiv.com/fqukp
 
@@ -28,7 +30,4 @@ as well as demographic data from Vanuatu und Berlin used for the data example in
 ***Software requirements***
 The code was written in R 4.0.3. Statistical models are fit using the Stan MCMC engine via the rstan package (2.21.2), which requires a C++ compiler. Installation        instructions are available at https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started. See also the Stan user guide at https://mc-stan.org/users/documentation. The rethinking package (2.12) is required to process fitted model outputs (installation instructions at http://xcelab.net/rm/software/).
 
-
-
-<a href="https://zenodo.org/badge/latestdoi/353287502"><img src="https://zenodo.org/badge/353287502.svg" alt="DOI"></a>
 

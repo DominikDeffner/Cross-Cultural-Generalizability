@@ -4,7 +4,7 @@
 
 This repository contains the scripts to reproduce all analyses and figures in 
 
-****Deffner, D., Rohrer, J. & McElreath, R. (2022) A Causal Framework for Cross-Cultural Generalizability. Advances in Methods and Practices in Psychological Science. 5 (3), 1-18.****
+****Deffner, D., Rohrer, J. & McElreath, R. (2022) A Causal Framework for Cross-Cultural Generalizability. Advances in Methods and Practices in Psychological Science. 5(3), 1-18.****
 
 Paper here: https://journals.sagepub.com/doi/10.1177/25152459221106366
 
